@@ -1,5 +1,5 @@
 ###### Soupy
-![]()
+![](https://github.com/is-leeroy-jenkins/Soupy/blob/master/resources/project_soupy.png)
 
 Soupy is a simple, reusable Python framework for scraping web pages into Markdown files.
 It separates responsibilities into small, testable classes: Fetcher, Parser, Writer, Scraper,
