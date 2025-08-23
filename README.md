@@ -63,4 +63,8 @@ from soupy import Soupy
     "https://www.python.org",]
 ```
 
-- MIT License. See LICENSE for details.
+## 📝 License
+
+Soupy is published under
+the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Boo/blob/main/LICENSE).
+
