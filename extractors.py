@@ -43,18 +43,20 @@
 '''
 from bs4 import BeautifulSoup
 
+
 class ContentExtractor:
 	"""
+
 		Purpose:
 		Abstract base for HTML → plain-text extraction.
 
-
-		Contract:
-		extract(html: str) -> str
 	"""
+	def __init__( self ):
+		pass
 
 	def extract( self, html: str ) -> str:
 		raise NotImplementedError( "ContentExtractor.extract must be implemented by subclasses." )
+
 
 class HeuristicExtractor( ContentExtractor ):
 	"""
@@ -63,36 +65,39 @@ class HeuristicExtractor( ContentExtractor ):
 		Pulls all <p> tags and joins their text. Fast and often good-enough.
 
 	"""
+	def __init__( self ):
+		super( ).__init__( )
 
 	def extract( self, html: str ) -> str:
 		if not html:
 			return ""
-
 		soup = BeautifulSoup( html, "html.parser" )
 		paragraphs = [ p.get_text( separator=' ', strip=True ) for p in soup.find_all( 'p' ) ]
 		return "".join(x for x in paragraphs if x)
 
+# noinspection PyArgumentList
 class ReadabilityExtractor( ContentExtractor ):
 	"""
-	Strategy:
-	Tries to grab the <article> element text; falls back to full document text.
-	(Swap in readability-lxml or trafilatura here later with the same interface.)
+		Strategy:
+		Tries to grab the <article> element text; falls back to full document text.
+		(Swap in readability-lxml or trafilatura here later with the same interface.)
 	"""
+	def __init__( self ):
+		super( ).__init__( )
 
-	def extract( self, html: str ) -> str:
+	def extract( self, html: str ) -> str | None:
 		if not html:
 			return ""
-
 		soup = BeautifulSoup( html, "html.parser" )
 		article = soup.find( "article" )
 		return article.get_text( separator=' ', strip=True ) if article else soup.get_text( ' ', strip=True )
 
 class CompositeExtractor( ContentExtractor ):
 	"""
-	Orchestrates multiple extractors in sequence and returns the first non-empty result.
+		Orchestrates multiple extractors in sequence and returns the first non-empty result.
 	"""
-
 	def __init__( self, extractors ):
+		super( ).__init__( )
 		self.extractors = list( extractors or [ ] )
 
 	def extract( self, html: str ) -> str:

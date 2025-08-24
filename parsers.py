@@ -67,13 +67,66 @@ class Parser:
 		"""
 		try:
 			soup = BeautifulSoup( html, "html.parser" )
-
-			# Remove unwanted elements
 			for tag in soup( [ "script", "style", "noscript" ] ):
 				tag.extract( )
-
-			text = soup.get_text( separator="\n" )
+			text = soup.get_text( separator = "\n" )
 			clean_text = "\n".join( line.strip( ) for line in text.splitlines( ) if line.strip( ) )
 			return clean_text if clean_text else None
 		except Exception:
 			return None
+
+class HTMLTextParser:
+	""""""
+	_strip_scripts: bool
+	_collapse_whitespace: bool
+
+	def __init__( self, strip_scripts: bool=True, collapse_whitespace: bool=True ) -> None:
+		"""
+		Purpose
+		Initialize an HTMLTextParser with basic cleaning controls.
+
+
+		Parameters
+		strip_scripts: bool
+		If True, drop <script> and <style> prior to extraction.
+		collapse_whitespace: bool
+		If True, collapse repeated whitespace in extracted text.
+
+
+		Returns
+		None
+		"""
+		self._strip_scripts = strip_scripts
+		self._collapse_whitespace = collapse_whitespace
+
+	def to_text( self, html: str ) -> str | None:
+		"""
+			Purpose
+			Extract human‑readable text from HTML.
+
+
+			Parameters
+			html: str
+			The HTML source to parse. Must not be None.
+
+
+			Returns
+			str
+			Cleaned, readable text suitable for markdown export.
+		"""
+		if html is None:
+			raise ValueError( "html must not be None" )
+		try:
+			soup = BeautifulSoup( html, "lxml" )
+			if self._strip_scripts:
+				for tag in soup( [ "script", "style", "noscript" ] ):
+					tag.decompose( )
+			_text = soup.get_text( "\n", strip = True )
+			if self._collapse_whitespace:
+				# Normalize common whitespace patterns without losing paragraph breaks entirely.
+				lines = [ ln.strip( ) for ln in _text.splitlines( ) ]
+				lines = [ ln for ln in lines if ln ]  # drop empty lines
+				_text = "\n\n".join( lines )
+				return _text
+		except Exception as exc:
+			raise Exception( f"Failed to parse HTML: {exc}" )

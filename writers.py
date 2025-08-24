@@ -43,6 +43,8 @@
 '''
 from pathlib import Path
 from typing import Optional
+from .core import Result
+
 
 class Writer:
 	"""
@@ -80,3 +82,42 @@ class Writer:
 			return file_path
 		except Exception:
 			return None
+
+class MarkdownWriter:
+	"""
+
+		Purpose:
+			Serialize a `Result` into a Markdown file with a small YAML header.
+
+
+	"""
+	def write( self, result: Result, path: str | Path ) -> Path:
+		"""
+
+			Purpose:
+				Write a `Result` to a Markdown file (front matter + body).
+
+			Parameters:
+				result (Result): Result object containing url/status/text/html.
+				path (str | Path): Destination path to write.
+
+			Returns:
+				Path: The absolute path of the written file.
+
+		"""
+		if result is None:
+			raise ValueError( "result cannot be None" )
+		if path is None:
+			raise ValueError( "path cannot be None" )
+		p = Path( path ).resolve( )
+		p.parent.mkdir( parents = True, exist_ok = True )
+
+		front_matter = (
+				"---\n"
+				f"source_url: {result.url}\n"
+				f"status_code: {result.status_code}\n"
+				"---\n\n"
+		)
+		body = result.text if result.text.endswith( "\n" ) else result.text + "\n"
+		p.write_text( front_matter + body, encoding = "utf-8" )
+		return p

@@ -4,3 +4,5 @@ bs4~=0.0.2
 beautifulsoup4~=4.13.4
 pathlib~=1.0.1
 html2text~=2025.4.15
+Crawl4AI~=0.7.4
+playwright~=1.54.0

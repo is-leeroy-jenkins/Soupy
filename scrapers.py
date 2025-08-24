@@ -65,6 +65,7 @@ class Scraper:
 
 	def scrape( self, url: str, filename: str, output_dir: str = "output" ) -> Optional[ str ]:
 		"""
+
 			Purpose:
 				Scrape a webpage and save the text content to a Markdown file.
 
@@ -75,6 +76,7 @@ class Scraper:
 
 			Returns:
 				Optional[str]: Path to the saved file if successful, otherwise None.
+
 		"""
 		html = self.fetcher.fetch( url )
 		if not html:

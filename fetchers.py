@@ -42,7 +42,12 @@
   ******************************************************************************************
   '''
 import requests
-from typing import Optional
+from typing import Optional, Tuple, Mapping
+from .core import Result
+import re
+import crawl4ai
+from playwright.sync_api import sync_playwright
+
 
 class Fetcher:
 	"""
@@ -56,7 +61,7 @@ class Fetcher:
 
 	"""
 
-	def fetch( self, url: str, timeout: int = 10 ) -> Optional[ str ]:
+	def fetch( self, url: str, timeout: int=10 ) -> Optional[ str ]:
 		"""
 
 			Purpose:
@@ -77,3 +82,203 @@ class Fetcher:
 			return response.text
 		except requests.RequestException:
 			return None
+
+
+class WebFetcher( Fetcher ):
+	"""
+
+		Purpose:
+			Concrete synchronous fetcher using `requests` with naive HTML→text extraction.
+
+		Parameters:
+			headers (Mapping[str, str]): Optional HTTP headers (User-Agent auto-filled if missing).
+
+		Returns:
+			None
+
+	"""
+	DEFAULT_TIMEOUT: Tuple[ float, float ] = (15.0, 30.0)
+	_headers: dict
+	_re_tag = re.compile( r"<[^>]+>" )
+	_re_ws = re.compile( r"\s+" )
+
+	def __init__( self, headers: Mapping[ str, str ] | None = None ) -> None:
+		"""
+
+			Purpose:
+				Initialize WebFetcher with optional headers and defaults.
+
+			Parameters:
+				headers (Mapping[str, str] | None): Optional headers to include in requests.
+
+			Returns:
+				None
+
+		"""
+		if headers is None:
+			self._headers = { }
+		else:
+			self._headers = dict( headers )
+
+		if "User-Agent" not in self._headers:
+			self._headers[ "User-Agent" ] = (
+					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+					"AppleWebKit/537.36 (KHTML, like Gecko) "
+					"Chrome/124.0 Safari/537.36" )
+
+	def fetch( self, url: str, timeout: int=10 ) -> Result:
+		"""
+
+			Purpose:
+				Perform an HTTP GET to fetch a page and return extracted text and HTML.
+
+			Parameters:
+				url (str): Absolute URL to fetch.
+				timeout (str) : time
+
+			Returns:
+				Result: Result containing canonical URL, status, text, HTML, and headers.
+
+		"""
+		if url is None:
+			raise ValueError( "url cannot be None" )
+
+		resp = requests.get( url, headers = self._headers, timeout = self.DEFAULT_TIMEOUT )
+		resp.raise_for_status( )
+		html = resp.text
+		text = self._html_to_text( html )
+		return Result( url = resp.url or url, status_code = resp.status_code, text = text,
+			html = html, headers = resp.headers )  # type: ignore[arg-type]
+
+	def _html_to_text( self, html: str ) -> str:
+		"""
+
+			Purpose:
+				Convert HTML to compact plain text with minimal heuristics.
+
+			Parameters:
+				html (str): Raw HTML.
+
+			Returns:
+				str: Plain text content.
+
+		"""
+		if html is None:
+			raise ValueError( "html cannot be None" )
+		# Remove scripts and styles
+		html = re.sub( r"<script[\s\S]*?</script>", " ", html, flags = re.IGNORECASE )
+		html = re.sub( r"<style[\s\S]*?</style>", " ", html, flags = re.IGNORECASE )
+		# Convert some tags to newlines
+		html = re.sub( r"<(?:br|/p)\b[^>]*>", "\n", html, flags = re.IGNORECASE )
+		# Strip remaining tags
+		text = self._re_tag.sub( " ", html )
+		# Collapse whitespace
+		text = self._re_ws.sub( " ", text )
+		# Normalize newlines
+		text = re.sub( r"\s*\n\s*", "\n", text )
+		return text.strip( )
+
+
+class WebCrawler( Fetcher ):
+	"""
+
+			Purpose:
+				Render and fetch a single URL using a headless browser stack.
+
+			Parameters:
+				user_agent (Optional[str]): Optional UA string to use for the browser context.
+
+			Returns:
+				None
+
+	"""
+	RENDER_TIMEOUT_SECONDS: float = 30.0
+	NAVIGATION_TIMEOUT_MS: float = 30000.0
+	user_agent: Optional[ str ]
+
+	def __init__( self, user_agent: Optional[ str ] = None ) -> None:
+		"""
+
+			Purpose:
+				Initialize the WebCrawler with optional user-agent overrides.
+
+			Parameters:
+				user_agent (Optional[str]): Browser user-agent string.
+
+			Returns:
+				None
+
+		"""
+		self.user_agent = user_agent
+
+
+	def fetch( self, url: str, timeout: int = 10 ) -> Result | None:
+		"""
+
+			Purpose:
+				Fetch and render a single URL into text + HTML.
+				Prefers `crawl4ai`, falls back to Playwright.
+
+			Parameters:
+				url (str): Absolute URL to fetch.
+				timeout (str) : time
+
+			Returns:
+				Result: Result with extracted text and HTML.
+
+		"""
+		if url is None:
+			raise ValueError( "url cannot be None" )
+		try:
+			import crawl4ai
+			output = crawl4ai.crawl_url(
+				url = url,
+				timeout = self.RENDER_TIMEOUT_SECONDS,
+				user_agent = self.user_agent,
+				browser = "chrome" )
+			html = output.html
+			text = output.text
+			status = int( getattr( output, "status", 200 ) )
+			return Result( url = url, status_code = status, text = text, html = html )
+		except Exception:
+			pass
+
+		with sync_playwright( ) as p:
+			browser = p.chromium.launch( channel = "chrome", headless = True )
+			try:
+				context = browser.new_context( user_agent = self.user_agent )
+				page = context.new_page( )
+				page.set_default_navigation_timeout( self.NAVIGATION_TIMEOUT_MS )
+				page.goto( url, wait_until = "networkidle" )
+				page.wait_for_load_state( "domcontentloaded" )
+				html = page.content( )
+				text = _sanitize_html_to_text( html )
+				status = 200
+				return Result( url = url, status_code = status, text = text, html = html )
+			finally:
+				browser.close( )
+
+
+def _sanitize_html_to_text( html: str ) -> str:
+	"""
+
+		Purpose:
+			Minimal HTML to text sanitizer used by the crawler path.
+
+		Parameters:
+			html (str): Raw HTML.
+
+		Returns:
+			str: Plain text content.
+
+	"""
+	if html is None:
+		raise ValueError( "html cannot be None" )
+	import re as _re
+	html = _re.sub( r"<script[\s\S]*?</script>", " ", html, flags = _re.IGNORECASE )
+	html = _re.sub( r"<style[\s\S]*?</style>", " ", html, flags = _re.IGNORECASE )
+	html = _re.sub( r"<(?:br|/p)\b[^>]*>", "\n", html, flags = _re.IGNORECASE )
+	text = _re.sub( r"<[^>]+>", " ", html )
+	text = _re.sub( r"\s+", " ", text )
+	text = _re.sub( r"\s*\n\s*", "\n", text )
+	return text.strip( )

@@ -59,13 +59,19 @@ class Result:
 	Returns:
 		None
 	"""
-
-	# Fields (declared above the constructor)
 	url: str
 	status_code: int
 	text: str
 	html: Optional[ str ]
 	headers: Dict[ str, str ]
+
+	@property
+	def has_html( self ) -> bool:
+		"""
+		Purpose:
+			Indicate whether HTML is attached to the result.
+		"""
+		return isinstance( self.html, str ) and len( self.html ) > 0
 
 	def __init__(
 			self,
@@ -85,33 +91,9 @@ class Result:
 			text (str): Extracted text content (can be empty).
 			html (Optional[str]): Raw HTML used for extraction.
 			headers (Optional[Dict[str, str]]): Response headers.
-
-		Returns:
-			None
 		"""
-		if url is None:
-			raise ValueError( "url cannot be None" )
-		if status_code is None:
-			raise ValueError( "status_code cannot be None" )
-		if text is None:
-			raise ValueError( "text cannot be None" )
-
 		self.url = url
 		self.status_code = status_code
 		self.text = text
 		self.html = html
 		self.headers = dict( headers or { } )
-
-	@property
-	def has_html( self ) -> bool:
-		"""
-		Purpose:
-			Indicate whether HTML is attached to the result.
-
-		Parameters:
-			None
-
-		Returns:
-			bool: True if `html` is a non-empty string; False otherwise.
-		"""
-		return isinstance( self.html, str ) and len( self.html ) > 0
