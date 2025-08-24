@@ -178,12 +178,12 @@ class WebFetcher( Fetcher ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'soupy'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'WebFetcher'
+			exception.method = 'fetch( self, url: str, time: int=10 ) -> Result'
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def html_to_text( self, html: str ) -> str:
+	def html_to_text( self, html: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -213,8 +213,8 @@ class WebFetcher( Fetcher ):
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'soupy'
-			exception.cause = ''
-			exception.method = ''
+			exception.cause = 'WebFetcher'
+			exception.method = 'html_to_text( self, html: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -283,7 +283,7 @@ class WebCrawler( Fetcher ):
 			self.raw_html = output.html
 			self.parsed_text = output.text
 			status = int( getattr( output, 'status', 200 ) )
-			return Result( url=url, status=status, text=self.parsed_text, html=self.raw_html )
+			return Result( url=self.url, status=status, text=self.parsed_text, html=self.raw_html )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'soupy'
