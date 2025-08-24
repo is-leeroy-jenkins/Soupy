@@ -66,5 +66,5 @@ from soupy import Soupy
 ## 📝 License
 
 Soupy is published under
-the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Soupy/blob/main/LICENSE).
+the [MIT General Public License v3](https://github.com/is-leeroy-jenkins/Soupy/blob/master/LICENSE.txt).
 
