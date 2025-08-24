@@ -43,6 +43,10 @@
 '''
 from typing import Dict, Optional
 
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
+
 class Result:
 	"""
 

@@ -6,3 +6,5 @@ pathlib~=1.0.1
 Crawl4AI~=0.7.4
 playwright~=1.54.0
 FreeSimpleGUI~=5.2.0.post1
+html2text~=2025.4.15
+oauthlib~=3.3.1

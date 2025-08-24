@@ -44,6 +44,10 @@
 from bs4 import BeautifulSoup
 from typing import Optional
 
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
+
 class Parser( ):
 	"""
 

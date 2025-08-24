@@ -189,6 +189,7 @@ class Error( Exception ):
 		'''
 		return [ 'message', 'cause', 'method', 'module', 'scaler', 'stack_trace', 'info' ]
 
+
 class ErrorDialog( Dark ):
 	'''
 

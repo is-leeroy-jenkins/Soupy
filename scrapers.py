@@ -45,6 +45,7 @@ from typing import Optional
 from .fetchers import Fetcher
 from .parsers import Parser
 from .writers import Writer
+from boogr import Error, ErrorDialog
 
 class Scraper:
 	"""
@@ -57,13 +58,20 @@ class Scraper:
 				Executes the complete scrape and save workflow.
 
 	"""
+	fethcher: Fetcher
+	parser: Parser
+	writer: Writer
+	url: str
+	file_path: str
+	raw_html: str
+	parsed_text: str
 
 	def __init__( self ) -> None:
 		self.fetcher = Fetcher( )
 		self.parser = Parser( )
 		self.writer = Writer( )
 
-	def scrape( self, url: str, filename: str, output_dir: str = "output" ) -> Optional[ str ]:
+	def scrape( self, url: str, filename: str, output_dir: str='output' ) -> Optional[ str ]:
 		"""
 
 			Purpose:
@@ -78,13 +86,22 @@ class Scraper:
 				Optional[str]: Path to the saved file if successful, otherwise None.
 
 		"""
-		html = self.fetcher.fetch( url )
-		if not html:
-			return None
+		try:
+			html = self.fetcher.fetch( url )
 
-		text = self.parser.parse( html )
-		if not text:
-			return None
+			if not html:
+				return None
 
-		file_path = self.writer.write( text, filename, output_dir )
-		return str( file_path ) if file_path else None
+			text = self.parser.parse( html )
+			if not text:
+				return None
+
+			file_path = self.writer.write( text, filename, output_dir )
+			return str( file_path ) if file_path else None
+		except Exception as e:
+			exception = Error( e )
+			exception.module = ''
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
