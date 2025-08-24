@@ -41,6 +41,8 @@
   </summary>
   ******************************************************************************************
 '''
+from typing import Optional, List
+from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
 try:
 	import html2text
@@ -65,6 +67,8 @@ class MarkdownConverter:
 		convert(html: str) -> str
 		
 	"""
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
 
 	def convert( self, html: str ) -> str | None:
 		raise NotImplementedError( 'NOT IMPLEMENTED!' )
@@ -80,6 +84,10 @@ class Html2TextConverter( MarkdownConverter ):
 			If html2text isn't installed, this converter raises RuntimeError.
 			
 	"""
+
+	def __init__( self ) -> None:
+		super( ).__init__( )
+
 	def convert( self, html: str ) -> str | None:
 		"""
 		
@@ -99,16 +107,26 @@ class Html2TextConverter( MarkdownConverter ):
 					If html2text is unavailable.
 					
 		"""
-		if not _HAS_HTML2TEXT:
-			raise RuntimeError( 'html2text not installed.' )
+		try:
+			if not _HAS_HTML2TEXT:
+				raise RuntimeError( 'html2text not installed.' )
 
-		h = html2text.HTML2Text( )
-		h.body_width = 0
-		h.ignore_links = False
-		h.ignore_images = True
-		h.skip_internal_links = False
-		h.protect_links = True
-		return h.handle( html ).strip( )
+			self.raw_html = html
+			h = html2text.HTML2Text( )
+			h.body_width = 0
+			h.ignore_links = False
+			h.ignore_images = True
+			h.skip_internal_links = False
+			h.protect_links = True
+			self.parsed_text = h.handle( self.raw_html ).strip( )
+			return self.parsed_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = ''
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
 
 
 class SoupFallbackConverter( MarkdownConverter ):
@@ -119,10 +137,27 @@ class SoupFallbackConverter( MarkdownConverter ):
 			lists, and blockquotes from a parsed DOM.
 		
 	"""
+	soup: Optional[ BeautifulSoup ]
+	blocks: Optional[ List[ str ] ]
+
+
+	def __init__( self ):
+		super( ).__init__( )
+		self.blocks = [ ]
 
 	def strip_noise( self, soup: BeautifulSoup ) -> None:
-		for tag in soup( [ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
-			tag.decompose( )
+		try:
+			throw_if( 'soup', soup )
+			self.soup = soup
+			for tag in self.soup( [ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
+				tag.decompose( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'strip_noise( self, soup: BeautifulSoup ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
 
 	def convert( self, html: str ) -> str | None:
 		"""
@@ -139,29 +174,39 @@ class SoupFallbackConverter( MarkdownConverter ):
 					Markdown (simple).
 					
 		"""
-		soup = BeautifulSoup( html, 'html.parser' )
-		self.strip_noise( soup )
-		body = soup.body
-		blocks = [ ]
-		for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
-		                           'blockquote', 'pre', 'code' ] ):
-			txt = el.get_text( ' ', strip = True )
-			if not txt:
-				continue
-			name = el.lower( )
-			if name.startswith( 'h' ):
-				level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
-				blocks.append( f'{'#' * level} {txt}' )
-			elif name == 'li':
-				blocks.append( f'- {txt}' )
-			elif name == 'blockquote':
-				blocks.append(
-					'\n'.join( [ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
-			else:
-				blocks.append( txt )
-		if not blocks:
-			return body.get_text( '\n', strip = True )
-		return '\n\n'.join( blocks )
+		try:
+			throw_if( 'html', html )
+			self.raw_html = html
+			self.soup = BeautifulSoup( self.raw_html, 'html.parser' )
+			self.strip_noise( self.soup )
+			body = self.soup.body
+			for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
+			                           'blockquote', 'pre', 'code' ] ):
+				txt = el.get_text( ' ', strip=True )
+				if not txt:
+					continue
+				name = el.lower( )
+				if name.startswith( 'h' ):
+					level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
+					self.blocks.append( f'{'#' * level} {txt}' )
+				elif name == 'li':
+					self.blocks.append( f'- {txt}' )
+				elif name == 'blockquote':
+					self.blocks.append(
+						'\n'.join( [ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
+				else:
+					self.blocks.append( txt )
+			if not self.blocks:
+				return body.get_text( '\n', strip=True )
+			self.parsed_text = '\n\n'.join( self.blocks )
+			return self.parsed_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'convert( self, html: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
 
 
 class CompositeMarkdownConverter( MarkdownConverter ):
@@ -175,9 +220,13 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 				Ordered list of converter strategies.
 
 	"""
+	converters: Optional[ List[ MarkdownConverter ] ]
+	errors: Optional[ List[ str ] ]
 
 	def __init__( self, converters: list[ MarkdownConverter ] ) -> None:
-		self._converters = converters[ : ]
+		super( ).__init__( )
+		self.converters = converters[ : ]
+		self.errors = [ ]
 
 	def convert( self, html: str ) -> str | None:
 		"""
@@ -198,12 +247,19 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 					If all converters fail.
 
 		"""
-		errors = [ ]
-		for c in self._converters:
-			try:
-				return c.convert( html )
-			except Exception as e:
-				errors.append( f'{c.__class__.__name__}: {e}' )
-		msg = 'All Markdown converters failed:\n- ' + '\n- '.join( errors )
-		raise RuntimeError( msg )
+		try:
+			for c in self.converters:
+				try:
+					return c.convert( html )
+				except Exception as e:
+					self.errors.append( f'{c.__class__.__name__}: {e}' )
+			msg = 'All Markdown converters failed:\n- ' + '\n- '.join( self.errors )
+			raise RuntimeError( msg )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'convert( self, html: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
 
