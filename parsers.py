@@ -46,31 +46,34 @@ from typing import Optional
 
 class Parser:
 	"""
-	Purpose:
-		Responsible for parsing raw HTML content into clean, readable text.
 
-	Methods:
-		parse(html: str) -> Optional[str]:
-			Extracts and returns visible text content from HTML.
+		Purpose:
+			Responsible for parsing raw HTML content into clean, readable text.
+
+		Methods:
+			parse(html: str) -> Optional[str]:
+				Extracts and returns visible text content from HTML.
+
 	"""
-
 	def parse( self, html: str ) -> Optional[ str ]:
 		"""
-		Purpose:
-			Convert raw HTML into clean text.
 
-		Parameters:
-			html (str): Raw HTML content.
+			Purpose:
+				Convert raw HTML into clean text.
 
-		Returns:
-			Optional[str]: Extracted readable text, or None if parsing fails.
+			Parameters:
+				html (str): Raw HTML content.
+
+			Returns:
+				Optional[str]: Extracted readable text, or None if parsing fails.
+
 		"""
 		try:
-			soup = BeautifulSoup( html, "html.parser" )
-			for tag in soup( [ "script", "style", "noscript" ] ):
+			soup = BeautifulSoup( html, 'html.parser' )
+			for tag in soup( [ 'script', 'style', 'noscript' ] ):
 				tag.extract( )
-			text = soup.get_text( separator = "\n" )
-			clean_text = "\n".join( line.strip( ) for line in text.splitlines( ) if line.strip( ) )
+			text = soup.get_text( separator = '\n' )
+			clean_text = '\n'.join( line.strip( ) for line in text.splitlines( ) if line.strip( ) )
 			return clean_text if clean_text else None
 		except Exception:
 			return None
@@ -82,19 +85,21 @@ class HTMLTextParser:
 
 	def __init__( self, strip_scripts: bool=True, collapse_whitespace: bool=True ) -> None:
 		"""
-		Purpose
-		Initialize an HTMLTextParser with basic cleaning controls.
-
-
-		Parameters
-		strip_scripts: bool
-		If True, drop <script> and <style> prior to extraction.
-		collapse_whitespace: bool
-		If True, collapse repeated whitespace in extracted text.
-
-
-		Returns
-		None
+		
+			Purpose
+			Initialize an HTMLTextParser with basic cleaning controls.
+	
+	
+			Parameters
+			strip_scripts: bool
+			If True, drop <script> and <style> prior to extraction.
+			collapse_whitespace: bool
+			If True, collapse repeated whitespace in extracted text.
+	
+	
+			Returns
+			None
+			
 		"""
 		self._strip_scripts = strip_scripts
 		self._collapse_whitespace = collapse_whitespace
@@ -115,18 +120,18 @@ class HTMLTextParser:
 			Cleaned, readable text suitable for markdown export.
 		"""
 		if html is None:
-			raise ValueError( "html must not be None" )
+			raise ValueError( 'html must not be None' )
 		try:
-			soup = BeautifulSoup( html, "lxml" )
+			soup = BeautifulSoup( html, 'lxml' )
 			if self._strip_scripts:
-				for tag in soup( [ "script", "style", "noscript" ] ):
+				for tag in soup( [ 'script', 'style', 'noscript' ] ):
 					tag.decompose( )
-			_text = soup.get_text( "\n", strip = True )
+			_text = soup.get_text( '\n', strip = True )
 			if self._collapse_whitespace:
 				# Normalize common whitespace patterns without losing paragraph breaks entirely.
 				lines = [ ln.strip( ) for ln in _text.splitlines( ) ]
 				lines = [ ln for ln in lines if ln ]  # drop empty lines
-				_text = "\n\n".join( lines )
+				_text = '\n\n'.join( lines )
 				return _text
 		except Exception as exc:
-			raise Exception( f"Failed to parse HTML: {exc}" )
+			raise Exception( f'Failed to parse HTML: {exc}' )

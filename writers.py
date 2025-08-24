@@ -58,7 +58,7 @@ class Writer:
 
 	"""
 
-	def write( self, text: str, filename: str, output_dir: str = "output" ) -> Optional[ Path ]:
+	def write( self, text: str, filename: str, output_dir: str = 'output' ) -> Optional[ Path ]:
 		"""
 
 			Purpose:
@@ -77,8 +77,8 @@ class Writer:
 			output_path = Path( output_dir )
 			output_path.mkdir( parents = True, exist_ok = True )
 
-			file_path = output_path / f"{filename}.md"
-			file_path.write_text( text, encoding = "utf-8" )
+			file_path = output_path / f'{filename}.md'
+			file_path.write_text( text, encoding = 'utf-8' )
 			return file_path
 		except Exception:
 			return None
@@ -106,18 +106,18 @@ class MarkdownWriter:
 
 		"""
 		if result is None:
-			raise ValueError( "result cannot be None" )
+			raise ValueError( 'result cannot be None' )
 		if path is None:
-			raise ValueError( "path cannot be None" )
+			raise ValueError( 'path cannot be None' )
 		p = Path( path ).resolve( )
 		p.parent.mkdir( parents = True, exist_ok = True )
 
 		front_matter = (
-				"---\n"
-				f"source_url: {result.url}\n"
-				f"status_code: {result.status_code}\n"
-				"---\n\n"
+				'---\n'
+				f'source_url: {result.url}\n'
+				f'status_code: {result.status_code}\n'
+				'---\n\n'
 		)
-		body = result.text if result.text.endswith( "\n" ) else result.text + "\n"
-		p.write_text( front_matter + body, encoding = "utf-8" )
+		body = result.text if result.text.endswith( '\n' ) else result.text + '\n'
+		p.write_text( front_matter + body, encoding = 'utf-8' )
 		return p

@@ -46,24 +46,48 @@ from typing import Dict, Optional
 
 class Result:
 	"""
-	Purpose:
-		Immutable container for a single-page scrape outcome.
 
-	Parameters:
-		url (str): Canonical URL that was fetched.
-		status_code (int): HTTP status if available; use 0 when not applicable.
-		text (str): Extracted plain text content (may be empty).
-		html (Optional[str]): Raw HTML used to derive `text`, if available.
-		headers (Optional[Dict[str, str]]): Response headers, if available.
+		Purpose:
+			Immutable container for a single-page scrape outcome.
 
-	Returns:
-		None
+		Parameters:
+			url (str): Canonical URL that was fetched.
+			status (int): HTTP status if available; use 0 when not applicable.
+			text (str): Extracted plain text content (may be empty).
+			html (Optional[str]): Raw HTML used to derive `text`, if available.
+			headers (Optional[Dict[str, str]]): Response headers, if available.
+
+		Returns:
+			None
+
 	"""
 	url: str
 	status_code: int
 	text: str
 	html: Optional[ str ]
 	headers: Dict[ str, str ]
+
+	def __init__( self, url: str, status: int, text: str,
+	              html: Optional[ str ]=None, headers: Optional[ Dict[ str, str ] ]=None ) -> None:
+		"""
+
+			Purpose:
+				Initialize Result with canonical URL, status, extracted text,
+				and optional HTML/headers.
+
+			Parameters:
+				url (str): Canonical URL for the content.
+				status (int): HTTP status code or 0 if not applicable.
+				text (str): Extracted text content (can be empty).
+				html (Optional[str]): Raw HTML used for extraction.
+				headers (Optional[Dict[str, str]]): Response headers.
+
+		"""
+		self.url = url
+		self.status_code = status
+		self.text = text
+		self.html = html
+		self.headers = dict( headers or { } )
 
 	@property
 	def has_html( self ) -> bool:
@@ -72,28 +96,3 @@ class Result:
 			Indicate whether HTML is attached to the result.
 		"""
 		return isinstance( self.html, str ) and len( self.html ) > 0
-
-	def __init__(
-			self,
-			url: str,
-			status_code: int,
-			text: str,
-			html: Optional[ str ] = None,
-			headers: Optional[ Dict[ str, str ] ] = None,
-	) -> None:
-		"""
-		Purpose:
-			Initialize Result with canonical URL, status, extracted text, and optional HTML/headers.
-
-		Parameters:
-			url (str): Canonical URL for the content.
-			status_code (int): HTTP status code or 0 if not applicable.
-			text (str): Extracted text content (can be empty).
-			html (Optional[str]): Raw HTML used for extraction.
-			headers (Optional[Dict[str, str]]): Response headers.
-		"""
-		self.url = url
-		self.status_code = status_code
-		self.text = text
-		self.html = html
-		self.headers = dict( headers or { } )

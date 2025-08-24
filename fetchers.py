@@ -77,7 +77,7 @@ class Fetcher:
 		"""
 		try:
 			response = requests.get( url, timeout = timeout,
-				headers = { "User-Agent": "SoupyBot/1.0" } )
+				headers = { 'User-Agent': 'SoupyBot/1.0' } )
 			response.raise_for_status( )
 			return response.text
 		except requests.RequestException:
@@ -120,11 +120,11 @@ class WebFetcher( Fetcher ):
 		else:
 			self._headers = dict( headers )
 
-		if "User-Agent" not in self._headers:
-			self._headers[ "User-Agent" ] = (
-					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-					"AppleWebKit/537.36 (KHTML, like Gecko) "
-					"Chrome/124.0 Safari/537.36" )
+		if 'User-Agent' not in self._headers:
+			self._headers[ 'User-Agent' ] = (
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+					'AppleWebKit/537.36 (KHTML, like Gecko) '
+					'Chrome/124.0 Safari/537.36' )
 
 	def fetch( self, url: str, timeout: int=10 ) -> Result:
 		"""
@@ -141,13 +141,12 @@ class WebFetcher( Fetcher ):
 
 		"""
 		if url is None:
-			raise ValueError( "url cannot be None" )
-
+			raise ValueError( 'url cannot be None' )
 		resp = requests.get( url, headers = self._headers, timeout = self.DEFAULT_TIMEOUT )
 		resp.raise_for_status( )
 		html = resp.text
 		text = self._html_to_text( html )
-		return Result( url = resp.url or url, status_code = resp.status_code, text = text,
+		return Result( url = resp.url or url, status = resp.status_code, text = text,
 			html = html, headers = resp.headers )  # type: ignore[arg-type]
 
 	def _html_to_text( self, html: str ) -> str:
@@ -164,7 +163,7 @@ class WebFetcher( Fetcher ):
 
 		"""
 		if html is None:
-			raise ValueError( "html cannot be None" )
+			raise ValueError( 'html cannot be None' )
 		# Remove scripts and styles
 		html = re.sub( r"<script[\s\S]*?</script>", " ", html, flags = re.IGNORECASE )
 		html = re.sub( r"<style[\s\S]*?</style>", " ", html, flags = re.IGNORECASE )
@@ -196,7 +195,7 @@ class WebCrawler( Fetcher ):
 	NAVIGATION_TIMEOUT_MS: float = 30000.0
 	user_agent: Optional[ str ]
 
-	def __init__( self, user_agent: Optional[ str ] = None ) -> None:
+	def __init__( self, user_agent: Optional[ str ]=None ) -> None:
 		"""
 
 			Purpose:
@@ -211,8 +210,7 @@ class WebCrawler( Fetcher ):
 		"""
 		self.user_agent = user_agent
 
-
-	def fetch( self, url: str, timeout: int = 10 ) -> Result | None:
+	def fetch( self, url: str, timeout: int=10 ) -> Result | None:
 		"""
 
 			Purpose:
@@ -228,33 +226,29 @@ class WebCrawler( Fetcher ):
 
 		"""
 		if url is None:
-			raise ValueError( "url cannot be None" )
+			raise ValueError( 'url cannot be None' )
 		try:
-			import crawl4ai
-			output = crawl4ai.crawl_url(
-				url = url,
-				timeout = self.RENDER_TIMEOUT_SECONDS,
-				user_agent = self.user_agent,
-				browser = "chrome" )
+			output = crawl4ai.crawl_url( url=url, timeout=self.RENDER_TIMEOUT_SECONDS,
+				user_agent=self.user_agent, browser='chrome' )
 			html = output.html
 			text = output.text
-			status = int( getattr( output, "status", 200 ) )
-			return Result( url = url, status_code = status, text = text, html = html )
+			status = int( getattr( output, 'status', 200 ) )
+			return Result( url = url, status = status, text = text, html = html )
 		except Exception:
 			pass
 
 		with sync_playwright( ) as p:
-			browser = p.chromium.launch( channel = "chrome", headless = True )
+			browser = p.chromium.launch( channel = 'chrome', headless = True )
 			try:
 				context = browser.new_context( user_agent = self.user_agent )
 				page = context.new_page( )
 				page.set_default_navigation_timeout( self.NAVIGATION_TIMEOUT_MS )
-				page.goto( url, wait_until = "networkidle" )
-				page.wait_for_load_state( "domcontentloaded" )
+				page.goto( url, wait_until = 'networkidle' )
+				page.wait_for_load_state( 'domcontentloaded' )
 				html = page.content( )
 				text = _sanitize_html_to_text( html )
 				status = 200
-				return Result( url = url, status_code = status, text = text, html = html )
+				return Result( url=url, status=status, text=text, html=html )
 			finally:
 				browser.close( )
 
@@ -273,7 +267,7 @@ def _sanitize_html_to_text( html: str ) -> str:
 
 	"""
 	if html is None:
-		raise ValueError( "html cannot be None" )
+		raise ValueError( 'html cannot be None' )
 	import re as _re
 	html = _re.sub( r"<script[\s\S]*?</script>", " ", html, flags = _re.IGNORECASE )
 	html = _re.sub( r"<style[\s\S]*?</style>", " ", html, flags = _re.IGNORECASE )

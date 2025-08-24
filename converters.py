@@ -51,45 +51,51 @@ from bs4 import BeautifulSoup
 
 class MarkdownConverter:
 	"""
-	Purpose:
-	Abstract base for HTML → Markdown conversion.
-
-
-	Contract:
-	convert(html: str) -> str
+	
+		Purpose:
+		Abstract base for HTML → Markdown conversion.
+	
+	
+		Contract:
+		convert(html: str) -> str
+		
 	"""
 
 	def convert( self, html: str ) -> str:
-		raise NotImplementedError( "MarkdownConverter.convert must be implemented by subclasses." )
+		raise NotImplementedError( 'MarkdownConverter.convert must be implemented by subclasses.' )
 
 
 class Html2TextConverter( MarkdownConverter ):
 	"""
-	Purpose:
-		Use the 'html2text' library for high-fidelity conversion when available.
-
-	Notes:
-		If html2text isn't installed, this converter raises RuntimeError.
+	
+		Purpose:
+			Use the 'html2text' library for high-fidelity conversion when available.
+	
+		Notes:
+			If html2text isn't installed, this converter raises RuntimeError.
+			
 	"""
 	def convert( self, html: str ) -> str:
 		"""
-		Purpose:
-			Convert HTML to Markdown using html2text.
-
-		Parameters:
-			html (str):
-				HTML fragment or full document.
-
-		Returns:
-			str:
-				Markdown representation.
-
-		Raises:
-			RuntimeError:
-				If html2text is unavailable.
+		
+			Purpose:
+				Convert HTML to Markdown using html2text.
+	
+			Parameters:
+				html (str):
+					HTML fragment or full document.
+	
+			Returns:
+				str:
+					Markdown representation.
+	
+			Raises:
+				RuntimeError:
+					If html2text is unavailable.
+					
 		"""
 		if not _HAS_HTML2TEXT:
-			raise RuntimeError( "html2text not installed." )
+			raise RuntimeError( 'html2text not installed.' )
 
 		h = html2text.HTML2Text( )
 		h.body_width = 0
@@ -102,54 +108,58 @@ class Html2TextConverter( MarkdownConverter ):
 
 class SoupFallbackConverter( MarkdownConverter ):
 	"""
-	Purpose:
-		Simple, dependency-light fallback that preserves headings, paragraphs,
-		lists, and blockquotes from a parsed DOM.
+		
+		Purpose:
+			Simple, dependency-light fallback that preserves headings, paragraphs,
+			lists, and blockquotes from a parsed DOM.
+		
 	"""
 
 	def _strip_noise( self, soup: BeautifulSoup ) -> None:
-		for tag in soup( [ "script", "style", "noscript", "svg", "canvas", "iframe", "form" ] ):
+		for tag in soup( [ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
 			tag.decompose( )
 
 	def convert( self, html: str ) -> str:
 		"""
-		Purpose:
-			Convert HTML to a basic Markdown string.
-
-		Parameters:
-			html (str):
-				HTML fragment or full document.
-
-		Returns:
-			str:
-				Markdown (simple).
+		
+			Purpose:
+				Convert HTML to a basic Markdown string.
+	
+			Parameters:
+				html (str):
+					HTML fragment or full document.
+	
+			Returns:
+				str:
+					Markdown (simple).
+					
 		"""
-		soup = BeautifulSoup( html, "html.parser" )
+		soup = BeautifulSoup( html, 'html.parser' )
 		self._strip_noise( soup )
 		body = soup.body or soup
 
 		blocks = [ ]
-		for el in body.find_all( [ "h1", "h2", "h3", "h4", "h5", "h6",
-		                           "p", "li", "blockquote", "pre", "code" ] ):
-			txt = el.get_text( " ", strip = True )
+		for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+		                           'p', 'li', 'blockquote', 'pre', 'code' ] ):
+			txt = el.get_text( ' ', strip = True )
 			if not txt:
 				continue
 			name = el.name.lower( )
-			if name.startswith( "h" ):
+			if name.startswith( 'h' ):
 				level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
-				blocks.append( f"{'#' * level} {txt}" )
-			elif name == "li":
-				blocks.append( f"- {txt}" )
-			elif name == "blockquote":
+				blocks.append( f'{'#' * level} {txt}' )
+			elif name == 'li':
+				blocks.append( f'- {txt}' )
+			elif name == 'blockquote':
 				blocks.append(
-					"\n".join( [ f"> {line}" for line in txt.splitlines( ) if line.strip( ) ] ) )
+					'\n'.join( [ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
 			else:
 				blocks.append( txt )
 
 		if not blocks:
-			return body.get_text( "\n", strip = True )
+			return body.get_text( '\n', strip = True )
 
-		return "\n\n".join( blocks )
+		return '\n\n'.join( blocks )
 
 class CompositeMarkdownConverter( MarkdownConverter ):
 	"""
@@ -190,7 +200,7 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 			try:
 				return c.convert( html )
 			except Exception as e:
-				errors.append( f"{c.__class__.__name__}: {e}" )
-		msg = "All Markdown converters failed:\n- " + "\n- ".join( errors )
+				errors.append( f'{c.__class__.__name__}: {e}' )
+		msg = 'All Markdown converters failed:\n- ' + '\n- '.join( errors )
 		raise RuntimeError( msg )
 
