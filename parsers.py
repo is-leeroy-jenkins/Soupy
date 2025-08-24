@@ -44,7 +44,7 @@
 from bs4 import BeautifulSoup
 from typing import Optional
 
-class Parser:
+class Parser( ):
 	"""
 
 		Purpose:
@@ -78,7 +78,7 @@ class Parser:
 		except Exception:
 			return None
 
-class HTMLTextParser:
+class HTMLTextParser( Parser ):
 	""""""
 	_strip_scripts: bool
 	_collapse_whitespace: bool

@@ -47,3 +47,7 @@ from writers import MarkdownWriter
 from facades import Soupy
 
 __all__ = [ 'Result', 'WebFetcher', 'WebCrawler', 'MarkdownWriter', 'Soupy' ]
+
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
