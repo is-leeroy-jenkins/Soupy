@@ -71,11 +71,12 @@ class Fetcher:
 	headers: Optional[ Dict[ str, str ] ]
 	response: Optional[ Response ]
 	url: Optional[ str ]
+	result: Optional[ Result ]
 
 	def __init__( self ):
-		self.headers = { 'User-Agent': 'Soupy 1.0' }
+		pass
 
-	def fetch( self, url: str, timeout: int=10 ) -> Optional[ str ]:
+	def fetch( self, url: str, time: int=10 ) -> str | None:
 		"""
 
 			Purpose:
@@ -83,25 +84,19 @@ class Fetcher:
 
 			Parameters:
 				url (str): Target website URL.
-				timeout (int): Timeout in seconds for the HTTP request.
+				time (int): Timeout in seconds for the HTTP request.
 
 			Returns:
 				Optional[str]: HTML content if the request succeeds, otherwise None.
 
 		"""
 		try:
-			throw_if( 'url', url )
-			self.url = url
-			self.timeout = timeout
-			response = requests.get( url, timeout = timeout,
-				headers = { 'User-Agent': 'Soupy 1.0' } )
-			response.raise_for_status( )
-			return response.text
+			raise NotImplementedError( 'NOT IMPLEMENTED!' )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = ''
-			exception.cause = ''
-			exception.method = ''
+			exception.module = 'soupy'
+			exception.cause = 'Fetcher'
+			exception.method = 'fetch( self, url: str, time: int=10 ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -125,7 +120,7 @@ class WebFetcher( Fetcher ):
 	re_tag: Optional[ Pattern ]
 	re_ws: Optional[ Pattern ]
 
-	def __init__( self, headers: Mapping[ str, str ]=None ) -> None:
+	def __init__( self, headers: Dict[ str, str ]=None ) -> None:
 		"""
 
 			Purpose:
@@ -171,22 +166,24 @@ class WebFetcher( Fetcher ):
 		try:
 			throw_if( 'url', url )
 			self.raw_url = url
-			resp = requests.get( url=self.raw_url, headers=self.headers, timeout=time )
-			resp.raise_for_status( )
-			html = resp.text
-			text = self._html_to_text( html )
-			result = Result( url = resp.url or url, status = resp.status_code, text = text,
-				html = html, headers = resp.headers )
+			self.timeout = time
+			self.response = requests.get( url=self.raw_url, headers=self.headers,
+				timeout=self.timeout )
+			self.response.raise_for_status( )
+			html = self.response.text
+			text = self.html_to_text( html )
+			result = Result( url=self.response.url, status=self.response.status_code, text = text,
+				html = html, headers=self.response.headers )
 			return result
 		except Exception as e:
 			exception = Error( e )
-			exception.module = ''
+			exception.module = 'soupy'
 			exception.cause = ''
 			exception.method = ''
 			error = ErrorDialog( exception )
 			error.show( )
 
-	def _html_to_text( self, html: str ) -> str:
+	def html_to_text( self, html: str ) -> str:
 		"""
 
 			Purpose:
@@ -199,21 +196,27 @@ class WebFetcher( Fetcher ):
 				str: Plain text content.
 
 		"""
-		throw_if( 'html', html )
-		if html is None:
-			raise ValueError( 'html cannot be None' )
-		# Remove scripts and styles
-		html = re.sub( r'<script[\s\S]*?</script>', ' ', html, flags = re.IGNORECASE )
-		html = re.sub( r'<style[\s\S]*?</style>', ' ', html, flags = re.IGNORECASE )
-		# Convert some tags to newlines
-		html = re.sub( r'<(?:br|/p)\b[^>]*>', '\n', html, flags = re.IGNORECASE )
-		# Strip remaining tags
-		text = self.re_tag.sub( ' ', html )
-		# Collapse whitespace
-		text = self.re_ws.sub( ' ', text )
-		# Normalize newlines
-		text = re.sub( r'\s*\n\s*', '\n', text )
-		return text.strip( )
+		try:
+			throw_if( 'html', html )
+			# Remove scripts and styles
+			html = re.sub( r'<script[\s\S]*?</script>', ' ', html, flags=re.IGNORECASE )
+			html = re.sub( r'<style[\s\S]*?</style>', ' ', html, flags=re.IGNORECASE )
+			# Convert some tags to newlines
+			html = re.sub( r'<(?:br|/p)\b[^>]*>', '\n', html, flags=re.IGNORECASE )
+			# Strip remaining tags
+			text = self.re_tag.sub( ' ', html )
+			# Collapse whitespace
+			text = self.re_ws.sub( ' ', text )
+			# Normalize newlines
+			text = re.sub( r'\s*\n\s*', '\n', text )
+			return text.strip( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
 
 
 class WebCrawler( Fetcher ):
@@ -257,7 +260,7 @@ class WebCrawler( Fetcher ):
 		self.navigation_timeout = 30000.0
 		self.render_timeout = 30.0
 
-	def fetch( self, url: str, timeout: int=10 ) -> Result | None:
+	def fetch( self, url: str, time: int=10 ) -> Result | None:
 		"""
 
 			Purpose:
@@ -266,7 +269,7 @@ class WebCrawler( Fetcher ):
 
 			Parameters:
 				url (str): Absolute URL to fetch.
-				timeout (str) : time
+				time (str) : time
 
 			Returns:
 				Result: Result with extracted text and HTML.
@@ -283,9 +286,9 @@ class WebCrawler( Fetcher ):
 			return Result( url=url, status=status, text=self.parsed_text, html=self.raw_html )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = ''
-			exception.cause = ''
-			exception.method = ''
+			exception.module = 'soupy'
+			exception.cause = 'WebCrawler'
+			exception.method = 'fetch( self, url: str, time: int=10 ) -> Result'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -298,14 +301,14 @@ class WebCrawler( Fetcher ):
 				page.goto( url, wait_until='networkidle' )
 				page.wait_for_load_state( 'domcontentloaded' )
 				html = page.content( )
-				text = _sanitize_html_to_text( html )
+				text = sanitize_html_to_text( html )
 				status = 200
 				return Result( url=url, status=status, text=text, html=html )
 			finally:
 				browser.close( )
 
 
-def _sanitize_html_to_text( html: str ) -> str:
+def sanitize_html_to_text( html: str ) -> str | None:
 	"""
 
 		Purpose:
@@ -318,14 +321,20 @@ def _sanitize_html_to_text( html: str ) -> str:
 			str: Plain text content.
 
 	"""
-	if html is None:
-		raise ValueError( 'html cannot be None' )
 	import re as _re
-	throw_if( 'html', html )
-	html = _re.sub( r'<script[\s\S]*?</script>', ' ', html, flags = _re.IGNORECASE )
-	html = _re.sub( r'<style[\s\S]*?</style>', ' ', html, flags = _re.IGNORECASE )
-	html = _re.sub( r'<(?:br|/p)\b[^>]*>', '\n', html, flags = _re.IGNORECASE )
-	text = _re.sub( r'<[^>]+>', ' ', html )
-	text = _re.sub( r'\s+', ' ', text )
-	text = _re.sub( r'\s*\n\s*', '\n', text )
-	return text.strip( )
+	try:
+		throw_if( 'html', html )
+		html = _re.sub( r'<script[\s\S]*?</script>', ' ', html, flags = _re.IGNORECASE )
+		html = _re.sub( r'<style[\s\S]*?</style>', ' ', html, flags = _re.IGNORECASE )
+		html = _re.sub( r'<(?:br|/p)\b[^>]*>', '\n', html, flags = _re.IGNORECASE )
+		text = _re.sub( r'<[^>]+>', ' ', html )
+		text = _re.sub( r'\s+', ' ', text )
+		text = _re.sub( r'\s*\n\s*', '\n', text )
+		return text.strip( )
+	except Exception as e:
+		exception = Error( e )
+		exception.module = 'soupy'
+		exception.cause = 'soupy'
+		exception.method = 'sanitize_html_to_text( html: str ) -> str'
+		error = ErrorDialog( exception )
+		error.show( )

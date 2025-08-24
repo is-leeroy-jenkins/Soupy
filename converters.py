@@ -41,12 +41,17 @@
   </summary>
   ******************************************************************************************
 '''
+from bs4 import BeautifulSoup
 try:
 	import html2text
 	_HAS_HTML2TEXT = True
 except Exception:
 	_HAS_HTML2TEXT = False
-from bs4 import BeautifulSoup
+
+
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 
 class MarkdownConverter:
@@ -61,8 +66,8 @@ class MarkdownConverter:
 		
 	"""
 
-	def convert( self, html: str ) -> str:
-		raise NotImplementedError( 'MarkdownConverter.convert must be implemented by subclasses.' )
+	def convert( self, html: str ) -> str | None:
+		raise NotImplementedError( 'NOT IMPLEMENTED!' )
 
 
 class Html2TextConverter( MarkdownConverter ):
@@ -75,7 +80,7 @@ class Html2TextConverter( MarkdownConverter ):
 			If html2text isn't installed, this converter raises RuntimeError.
 			
 	"""
-	def convert( self, html: str ) -> str:
+	def convert( self, html: str ) -> str | None:
 		"""
 		
 			Purpose:
@@ -115,11 +120,11 @@ class SoupFallbackConverter( MarkdownConverter ):
 		
 	"""
 
-	def _strip_noise( self, soup: BeautifulSoup ) -> None:
+	def strip_noise( self, soup: BeautifulSoup ) -> None:
 		for tag in soup( [ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
 			tag.decompose( )
 
-	def convert( self, html: str ) -> str:
+	def convert( self, html: str ) -> str | None:
 		"""
 		
 			Purpose:
@@ -135,16 +140,15 @@ class SoupFallbackConverter( MarkdownConverter ):
 					
 		"""
 		soup = BeautifulSoup( html, 'html.parser' )
-		self._strip_noise( soup )
-		body = soup.body or soup
-
+		self.strip_noise( soup )
+		body = soup.body
 		blocks = [ ]
-		for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-		                           'p', 'li', 'blockquote', 'pre', 'code' ] ):
+		for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
+		                           'blockquote', 'pre', 'code' ] ):
 			txt = el.get_text( ' ', strip = True )
 			if not txt:
 				continue
-			name = el.name.lower( )
+			name = el.lower( )
 			if name.startswith( 'h' ):
 				level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
 				blocks.append( f'{'#' * level} {txt}' )
@@ -155,11 +159,10 @@ class SoupFallbackConverter( MarkdownConverter ):
 					'\n'.join( [ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
 			else:
 				blocks.append( txt )
-
 		if not blocks:
 			return body.get_text( '\n', strip = True )
-
 		return '\n\n'.join( blocks )
+
 
 class CompositeMarkdownConverter( MarkdownConverter ):
 	"""
@@ -176,7 +179,7 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 	def __init__( self, converters: list[ MarkdownConverter ] ) -> None:
 		self._converters = converters[ : ]
 
-	def convert( self, html: str ) -> str:
+	def convert( self, html: str ) -> str | None:
 		"""
 
 			Purpose:
