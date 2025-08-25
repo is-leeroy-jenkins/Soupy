@@ -41,11 +41,16 @@
 		</summary>
 	******************************************************************************************
 '''
+from pathlib import Path
 from typing import Optional
 from .fetchers import Fetcher
 from .parsers import Parser
 from .writers import Writer
 from boogr import Error, ErrorDialog
+
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 class Scraper:
 	"""
@@ -54,24 +59,24 @@ class Scraper:
 			Orchestrates the scraping process by combining fetch, parse, and write operations.
 
 		Methods:
-			scrape(url: str, filename: str, output_dir: str = "output") -> Optional[str]:
+			scrape(url: str, file: str, dir: str = "output") -> Optional[str]:
 				Executes the complete scrape and save workflow.
 
 	"""
-	fethcher: Fetcher
-	parser: Parser
-	writer: Writer
-	url: str
-	file_path: str
-	raw_html: str
-	parsed_text: str
+	fethcher: Optional[ Fetcher ]
+	parser: Optional[ Parser ]
+	writer: Optional[ Writer ]
+	url: Optional[ str ]
+	file_path: Optional[ Path ]
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
 
 	def __init__( self ) -> None:
 		self.fetcher = Fetcher( )
 		self.parser = Parser( )
 		self.writer = Writer( )
 
-	def scrape( self, url: str, filename: str, output_dir: str='output' ) -> Optional[ str ]:
+	def scrape( self, url: str, file: str, dir: str= 'output' ) -> str | None:
 		"""
 
 			Purpose:
@@ -79,29 +84,30 @@ class Scraper:
 
 			Parameters:
 				url (str): Target website URL.
-				filename (str): Desired Markdown filename (without extension).
-				output_dir (str): Directory to save the file into.
+				file (str): Desired Markdown filename (without extension).
+				dir (str): Directory to save the file into.
 
 			Returns:
 				Optional[str]: Path to the saved file if successful, otherwise None.
 
 		"""
 		try:
-			html = self.fetcher.fetch( url )
+			try:
+				throw_if( 'url', url )
+				throw_if( 'file', file )
+				self.raw_html = self.fetcher.fetch( url )
+				if not self.raw_html:
+					return None
+				self.parsed_text = self.parser.parse( self.raw_html )
+				if not self.parsed_text:
+					return None
+				self.file_path = self.writer.write( self.parsed_text, file, dir )
+				return self.file_path
+			except Exception as e:
+				exception = Error( e )
+				exception.module = 'soupy'
+				exception.cause = 'Scraper'
+				exception.method = 'scrape( self, url: str, file: str, dir: str=output ) -> str'
+				error = ErrorDialog( exception )
+				error.show( )
 
-			if not html:
-				return None
-
-			text = self.parser.parse( html )
-			if not text:
-				return None
-
-			file_path = self.writer.write( text, filename, output_dir )
-			return str( file_path ) if file_path else None
-		except Exception as e:
-			exception = Error( e )
-			exception.module = ''
-			exception.cause = ''
-			exception.method = ''
-			error = ErrorDialog( exception )
-			error.show( )

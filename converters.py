@@ -145,6 +145,9 @@ class SoupFallbackConverter( MarkdownConverter ):
 		super( ).__init__( )
 		self.blocks = [ ]
 
+	def __dir__( self ):
+		return [ 'soup', 'blocks', 'strip_noise', 'convert' ]
+
 	def strip_noise( self, soup: BeautifulSoup ) -> None:
 		try:
 			throw_if( 'soup', soup )
@@ -158,6 +161,7 @@ class SoupFallbackConverter( MarkdownConverter ):
 			exception.method = 'strip_noise( self, soup: BeautifulSoup ) -> None'
 			error = ErrorDialog( exception )
 			error.show( )
+
 
 	def convert( self, html: str ) -> str | None:
 		"""

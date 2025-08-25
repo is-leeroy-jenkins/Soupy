@@ -50,7 +50,7 @@ class Soupy:
 		Facade class providing a simple, user-friendly interface for scraping websites.
 
 	Methods:
-		save_as_markdown(url: str, filename: str, output_dir: str = "output") -> Optional[str]:
+		save_as_markdown(url: str, file: str, dir: str = "output") -> Optional[str]:
 			High-level method to scrape a website and store the result in Markdown format.
 	"""
 
@@ -65,7 +65,7 @@ class Soupy:
 
 		Parameters:
 			url (str): Target website URL.
-			filename (str): Desired Markdown filename (without extension).
+			filename (str): Desired Markdown file (without extension).
 			output_dir (str): Directory to save the file into.
 
 		Returns:

@@ -41,7 +41,13 @@
   </summary>
   ******************************************************************************************
 '''
+from typing import Optional
 from bs4 import BeautifulSoup
+from boogr import Error, ErrorDialog
+
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 
 class ContentExtractor:
@@ -51,11 +57,13 @@ class ContentExtractor:
 		Abstract base for HTML → plain-text extraction.
 
 	"""
+	raw_html: Optional[ str ]
+
 	def __init__( self ):
 		pass
 
 	def extract( self, html: str ) -> str:
-		raise NotImplementedError( "ContentExtractor.extract must be implemented by subclasses." )
+		raise NotImplementedError( "NOT IMPLEMENTED!" )
 
 
 class HeuristicExtractor( ContentExtractor ):
@@ -68,19 +76,28 @@ class HeuristicExtractor( ContentExtractor ):
 	def __init__( self ):
 		super( ).__init__( )
 
-	def extract( self, html: str ) -> str:
-		if not html:
-			return ""
-		soup = BeautifulSoup( html, "html.parser" )
-		paragraphs = [ p.get_text( separator=' ', strip=True ) for p in soup.find_all( 'p' ) ]
-		return "".join(x for x in paragraphs if x)
+	def extract( self, html: str ) -> str | None:
+		try:
+			throw_if( 'html', html )
+			soup = BeautifulSoup( html, "html.parser" )
+			paragraphs = [ p.get_text( separator=' ', strip=True ) for p in soup.find_all( 'p' ) ]
+			return "".join(x for x in paragraphs if x)
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'HeuristicExtractor'
+			exception.method = 'extract( self, html: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
 
 # noinspection PyArgumentList
 class ReadabilityExtractor( ContentExtractor ):
 	"""
+
 		Strategy:
 		Tries to grab the <article> element text; falls back to full document text.
 		(Swap in readability-lxml or trafilatura here later with the same interface.)
+
 	"""
 	def __init__( self ):
 		super( ).__init__( )
@@ -94,7 +111,9 @@ class ReadabilityExtractor( ContentExtractor ):
 
 class CompositeExtractor( ContentExtractor ):
 	"""
+
 		Orchestrates multiple extractors in sequence and returns the first non-empty result.
+
 	"""
 	def __init__( self, extractors ):
 		super( ).__init__( )

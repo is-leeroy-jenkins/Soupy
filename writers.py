@@ -44,21 +44,28 @@
 from pathlib import Path
 from typing import Optional
 from .core import Result
+from boogr import Error, ErrorDialog
 
+def throw_if( name: str, value: object ):
+	if not value:
+		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
-class Writer:
+class Writer( ):
 	"""
 
 		Purpose:
 			Responsible for writing extracted text into a Markdown (.md) file.
 
 		Methods:
-			write(text: str, filename: str, output_dir: str = "output") -> Optional[Path]:
+			write(text: str, file: str, dir: str = "output") -> Optional[Path]:
 				Saves text into a Markdown file in the specified directory.
 
 	"""
+	output_path: Optional[ Path ]
+	file_path: Optional[ Path ]
+	result: Optional[ Result ]
 
-	def write( self, text: str, filename: str, output_dir: str = 'output' ) -> Optional[ Path ]:
+	def write( self, text: str, filename: str, output_dir: str='output' ) -> Path | None:
 		"""
 
 			Purpose:
@@ -66,7 +73,7 @@ class Writer:
 
 			Parameters:
 				text (str): Text content to save.
-				filename (str): Desired Markdown filename (without extension).
+				filename (str): Desired Markdown file (without extension).
 				output_dir (str): Directory to save the file into.
 
 			Returns:
@@ -74,16 +81,23 @@ class Writer:
 
 		"""
 		try:
+			throw_if( 'text', text )
+			throw_if( 'file', filename )
 			output_path = Path( output_dir )
-			output_path.mkdir( parents = True, exist_ok = True )
-
+			output_path.mkdir( parents=True, exist_ok=True )
 			file_path = output_path / f'{filename}.md'
 			file_path.write_text( text, encoding = 'utf-8' )
 			return file_path
-		except Exception:
-			return None
+		except Exception as e:
+			exception = Error( e )
+			exception.module = ''
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
 
-class MarkdownWriter:
+
+class MarkdownWriter( ):
 	"""
 
 		Purpose:
@@ -91,7 +105,9 @@ class MarkdownWriter:
 
 
 	"""
-	def write( self, result: Result, path: str | Path ) -> Path:
+
+
+	def write( self, result: Result, path: str  ) -> Path | None:
 		"""
 
 			Purpose:
@@ -105,19 +121,25 @@ class MarkdownWriter:
 				Path: The absolute path of the written file.
 
 		"""
-		if result is None:
-			raise ValueError( 'result cannot be None' )
-		if path is None:
-			raise ValueError( 'path cannot be None' )
-		p = Path( path ).resolve( )
-		p.parent.mkdir( parents = True, exist_ok = True )
+		try:
+			throw_if( 'result', result )
+			throw_if( 'path', path )
+			p = Path( path ).resolve( )
+			p.parent.mkdir( parents = True, exist_ok = True )
 
-		front_matter = (
-				'---\n'
-				f'source_url: {result.url}\n'
-				f'status_code: {result.status_code}\n'
-				'---\n\n'
-		)
-		body = result.text if result.text.endswith( '\n' ) else result.text + '\n'
-		p.write_text( front_matter + body, encoding = 'utf-8' )
-		return p
+			front_matter = (
+					'---\n'
+					f'source_url: {result.url}\n'
+					f'status_code: {result.status_code}\n'
+					'---\n\n'
+			)
+			body = result.text if result.text.endswith( '\n' ) else result.text + '\n'
+			p.write_text( front_matter + body, encoding='utf-8' )
+			return p
+		except Exception as e:
+			exception = Error( e )
+			exception.module = ''
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
