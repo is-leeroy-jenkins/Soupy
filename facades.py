@@ -41,34 +41,60 @@
   </summary>
   ******************************************************************************************
 '''
+'''
+  ******************************************************************************************
+      Assembly:                Soupy
+      Filename:                facades.py
+      Author:                  Terry D. Eppler
+      Created:                 05-31-2022
+
+      Last Modified By:        ChatGPT (fix)
+      Last Modified On:        2025-08-25
+  ******************************************************************************************
+'''
+
 from typing import Optional
 from .scrapers import Scraper
 
 class Soupy:
 	"""
-	Purpose:
-		Facade class providing a simple, user-friendly interface for scraping websites.
 
-	Methods:
-		save_as_markdown(url: str, file: str, dir: str = "output") -> Optional[str]:
-			High-level method to scrape a website and store the result in Markdown format.
+		Purpose:
+			Facade class providing a simple, user-friendly interface for scraping websites.
+
+		Methods:
+			save_as_markdown(url: str, file: str, dir: str = "output") -> Optional[str]:
+				High-level method to scrape a website and store the result in Markdown format.
+
 	"""
 
 	def __init__( self ) -> None:
 		self.scraper = Scraper( )
 
+	def __dir__( self ) -> list[ str ]:
+		"""
+
+			Purpose:
+			Provide a stable ordering for attributes and methods for tooling and REPL use.
+			Attributes first, then public methods.
+
+		"""
+		return [ 'scraper', 'save_as_markdown' ]
+
 	def save_as_markdown( self, url: str, filename: str, output_dir: str = "output" ) -> Optional[
 		str ]:
 		"""
-		Purpose:
-			Fetch, parse, and save a webpage's text to Markdown.
 
-		Parameters:
-			url (str): Target website URL.
-			filename (str): Desired Markdown file (without extension).
-			output_dir (str): Directory to save the file into.
+			Purpose:
+				Fetch, parse, and save a webpage's text to Markdown.
 
-		Returns:
-			Optional[str]: Path to the saved file if successful, otherwise None.
+			Parameters:
+				url (str): Target website URL.
+				filename (str): Desired Markdown file (without extension).
+				output_dir (str): Directory to save the file into.
+
+			Returns:
+				Optional[str]: Path to the saved file if successful, otherwise None.
+
 		"""
 		return self.scraper.scrape( url, filename, output_dir )

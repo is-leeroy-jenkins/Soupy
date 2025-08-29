@@ -1,141 +1,277 @@
-'''
-  ******************************************************************************************
-      Assembly:                Soupy
-      Filename:                parsers.py
-      Author:                  Terry D. Eppler
-      Created:                 05-31-2022
-
-      Last Modified By:        Terry D. Eppler
-      Last Modified On:        05-01-2025
-  ******************************************************************************************
-  <copyright file="parsers.py" company="Terry D. Eppler">
-
-	     Soupy is a python framework for web scraping information into ML pipelines.
-	     Copyright ©  2022  Terry Eppler
-
-     Permission is hereby granted, free of charge, to any person obtaining a copy
-     of this software and associated documentation files (the “Software”),
-     to deal in the Software without restriction,
-     including without limitation the rights to use,
-     copy, modify, merge, publish, distribute, sublicense,
-     and/or sell copies of the Software,
-     and to permit persons to whom the Software is furnished to do so,
-     subject to the following conditions:
-
-     The above copyright notice and this permission notice shall be included in all
-     copies or substantial portions of the Software.
-
-     THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-     INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-     FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
-     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-     DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-     ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-     DEALINGS IN THE SOFTWARE.
-
-     You can contact me at:  terryeppler@gmail.com or eppler.terry@epa.gov
-
-  </copyright>
-  <summary>
-    parsers.py
-  </summary>
-  ******************************************************************************************
-'''
+from typing import Optional, List
+from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
-from typing import Optional
+
+try:
+	import html2text
+
+	_HAS_HTML2TEXT = True
+except Exception:
+	_HAS_HTML2TEXT = False
 
 def throw_if( name: str, value: object ):
 	if not value:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
-class Parser( ):
+class MarkdownConverter:
 	"""
 
 		Purpose:
-			Responsible for parsing raw HTML content into clean, readable text.
+		Abstract base for HTML → Markdown conversion.
 
-		Methods:
-			parse(html: str) -> Optional[str]:
-				Extracts and returns visible text content from HTML.
+
+		Contract:
+		convert(html: str) -> str
 
 	"""
-	def parse( self, html: str ) -> Optional[ str ]:
+	# class-level members for introspection
+	raw_html: Optional[ str ] = None
+	parsed_text: Optional[ str ] = None
+
+	def __dir__( self ) -> List[ str ]:
+		"""
+		Purpose:
+			Provide a stable ordering for attributes and methods for tooling.
+		Returns:
+			List[str]: attribute names followed by public methods.
+		"""
+		return [ 'raw_html', 'parsed_text', 'convert' ]
+
+	def convert( self, html: str ) -> str | None:
+		raise NotImplementedError( 'NOT IMPLEMENTED!' )
+
+class Html2TextConverter( MarkdownConverter ):
+	"""
+
+		Purpose:
+			Use the 'html2text' library for high-fidelity conversion when available.
+
+		Notes:
+			If html2text isn't installed, this converter raises RuntimeError.
+
+	"""
+
+	# No instance-specific attributes beyond base class, but declare for clarity
+	_has_html2text: bool = _HAS_HTML2TEXT
+
+	def __init__( self ) -> None:
+		super( ).__init__( )
+
+
+	def __dir__( self ) -> List[ str ]:
+		"""
+		Purpose:
+			Provide ordering for Html2TextConverter's attributes and methods.
+		Returns:
+			List[str]: attribute names followed by public methods.
+		"""
+		return [ 'raw_html', 'parsed_text', '_has_html2text', 'convert' ]
+
+
+	def convert( self, html: str ) -> str | None:
 		"""
 
 			Purpose:
-				Convert raw HTML into clean text.
+				Convert HTML to Markdown using html2text.
 
 			Parameters:
-				html (str): Raw HTML content.
+				html (str):
+					HTML fragment or full document.
 
 			Returns:
-				Optional[str]: Extracted readable text, or None if parsing fails.
+				str:
+					Markdown representation.
+
+			Raises:
+				RuntimeError:
+					If html2text is unavailable.
 
 		"""
 		try:
-			soup = BeautifulSoup( html, 'html.parser' )
-			for tag in soup( [ 'script', 'style', 'noscript' ] ):
-				tag.extract( )
-			text = soup.get_text( separator = '\n' )
-			clean_text = '\n'.join( line.strip( ) for line in text.splitlines( ) if line.strip( ) )
-			return clean_text if clean_text else None
-		except Exception:
-			return None
+			if not _HAS_HTML2TEXT:
+				raise RuntimeError( 'html2text not installed.' )
 
-class HTMLTextParser( Parser ):
-	""""""
-	_strip_scripts: bool
-	_collapse_whitespace: bool
+			self.raw_html = html
+			h = html2text.HTML2Text( )
+			h.body_width = 0
+			h.ignore_links = False
+			h.ignore_images = True
+			h.skip_internal_links = False
+			h.protect_links = True
+			self.parsed_text = h.handle( self.raw_html ).strip( )
+			return self.parsed_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = ''
+			exception.cause = ''
+			exception.method = ''
+			error = ErrorDialog( exception )
+			error.show( )
 
-	def __init__( self, strip_scripts: bool=True, collapse_whitespace: bool=True ) -> None:
+
+class SoupFallbackConverter( MarkdownConverter ):
+	"""
+
+		Purpose:
+			Simple, dependency-light fallback that preserves headings, paragraphs,
+			lists, and blockquotes from a parsed DOM.
+
+	"""
+	# explicit class-level members for introspection and to match project style
+	soup: Optional[ BeautifulSoup ] = None
+	blocks: Optional[ List[ str ] ] = None
+	raw_html: Optional[ str ] = None
+	parsed_text: Optional[ str ] = None
+
+	def __init__( self ):
+		super( ).__init__( )
+		self.blocks = [ ]
+
+	def __dir__( self ) -> List[ str ]:
 		"""
-		
-			Purpose
-			Initialize an HTMLTextParser with basic cleaning controls.
-	
-	
-			Parameters
-			strip_scripts: bool
-			If True, drop <script> and <style> prior to extraction.
-			collapse_whitespace: bool
-			If True, collapse repeated whitespace in extracted text.
-	
-	
-			Returns
-			None
-			
+		Purpose:
+			Provide a stable ordering for SoupFallbackConverter attributes/methods.
+		Returns:
+			List[str]: attribute names followed by public methods.
 		"""
-		self._strip_scripts = strip_scripts
-		self._collapse_whitespace = collapse_whitespace
+		return [ 'soup', 'blocks', 'raw_html', 'parsed_text', 'strip_noise', 'convert' ]
 
-	def to_text( self, html: str ) -> str | None:
-		"""
-			Purpose
-			Extract human‑readable text from HTML.
-
-
-			Parameters
-			html: str
-			The HTML source to parse. Must not be None.
-
-
-			Returns
-			str
-			Cleaned, readable text suitable for markdown export.
-		"""
-		if html is None:
-			raise ValueError( 'html must not be None' )
+	def strip_noise( self, soup: BeautifulSoup ) -> None:
 		try:
-			soup = BeautifulSoup( html, 'lxml' )
-			if self._strip_scripts:
-				for tag in soup( [ 'script', 'style', 'noscript' ] ):
-					tag.decompose( )
-			_text = soup.get_text( '\n', strip = True )
-			if self._collapse_whitespace:
-				# Normalize common whitespace patterns without losing paragraph breaks entirely.
-				lines = [ ln.strip( ) for ln in _text.splitlines( ) ]
-				lines = [ ln for ln in lines if ln ]  # drop empty lines
-				_text = '\n\n'.join( lines )
-				return _text
-		except Exception as exc:
-			raise Exception( f'Failed to parse HTML: {exc}' )
+			throw_if( 'soup', soup )
+			self.soup = soup
+			for tag in self.soup(
+					[ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
+				tag.decompose( )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'strip_noise( self, soup: BeautifulSoup ) -> None'
+			error = ErrorDialog( exception )
+			error.show( )
+
+	def convert( self, html: str ) -> str | None:
+		"""
+
+			Purpose:
+				Convert HTML to a basic Markdown string.
+
+			Parameters:
+				html (str):
+					HTML fragment or full document.
+
+			Returns:
+				str:
+					Markdown (simple).
+
+		"""
+		try:
+			throw_if( 'html', html )
+			self.raw_html = html
+			self.soup = BeautifulSoup( self.raw_html, 'html.parser' )
+			self.strip_noise( self.soup )
+			body = self.soup.body
+
+			# guard if <body> is missing (return a sensible fallback)
+			if body is None:
+				return self.soup.get_text( '\n', strip = True )
+
+			for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
+			                           'blockquote', 'pre', 'code' ] ):
+				txt = el.get_text( ' ', strip = True )
+				if not txt:
+					continue
+				# use the tag name for decision logic
+				name = el.name.lower( )
+				if name.startswith( 'h' ):
+					level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
+					# fixed f-string for '#' * level
+					self.blocks.append( f'{"#" * level} {txt}' )
+				elif name == 'li':
+					self.blocks.append( f'- {txt}' )
+				elif name == 'blockquote':
+					self.blocks.append(
+						'\n'.join(
+							[ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
+				else:
+					self.blocks.append( txt )
+			if not self.blocks:
+				return body.get_text( '\n', strip = True )
+			self.parsed_text = '\n\n'.join( self.blocks )
+			return self.parsed_text
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'convert( self, html: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
+
+
+class CompositeMarkdownConverter( MarkdownConverter ):
+	"""
+
+		Purpose:
+			Try multiple Markdown converters in order until one succeeds.
+
+		Parameters:
+			converters (list[MarkdownConverter]):
+				Ordered list of converter strategies.
+
+	"""
+	# class-level members
+	converters: Optional[ List[ MarkdownConverter ] ] = None
+	errors: Optional[ List[ str ] ] = None
+	raw_html: Optional[ str ] = None
+	parsed_text: Optional[ str ] = None
+
+	def __init__( self, converters: list[ MarkdownConverter ] ) -> None:
+		super( ).__init__( )
+		self.converters = converters[ : ]
+		self.errors = [ ]
+
+	def __dir__( self ) -> List[ str ]:
+		"""
+		Purpose:
+			Provide a stable ordering for CompositeMarkdownConverter attributes/methods.
+
+		Returns:
+			List[str]: attribute names followed by public methods.
+		"""
+		return [ 'converters', 'errors', 'raw_html', 'parsed_text', 'convert' ]
+
+	def convert( self, html: str ) -> str | None:
+		"""
+
+			Purpose:
+				Apply each converter in order until one returns Markdown successfully.
+
+			Parameters:
+				html (str):
+					HTML input.
+
+			Returns:
+				str:
+					Markdown output.
+
+			Raises:
+				RuntimeError:
+					If all converters fail.
+
+		"""
+		try:
+			for c in self.converters:
+				try:
+					return c.convert( html )
+				except Exception as e:
+					self.errors.append( f'{c.__class__.__name__}: {e}' )
+			msg = 'All Markdown converters failed:\n- ' + '\n- '.join( self.errors )
+			raise RuntimeError( msg )
+		except Exception as e:
+			exception = Error( e )
+			exception.module = 'soupy'
+			exception.cause = 'SoupFallbackConverter'
+			exception.method = 'convert( self, html: str ) -> str'
+			error = ErrorDialog( exception )
+			error.show( )
