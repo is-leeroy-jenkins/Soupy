@@ -81,20 +81,21 @@ class Soupy:
 		"""
 		return [ 'scraper', 'save_as_markdown' ]
 
-	def save_as_markdown( self, url: str, filename: str, output_dir: str = "output" ) -> Optional[
-		str ]:
+	def save_as_markdown( self, url: str, filename: str, output_dir: str="output" ) -> str | None:
 		"""
 
 			Purpose:
-				Fetch, parse, and save a webpage's text to Markdown.
+			--------
+			Fetch, parse, and save a webpage's text to Markdown.
 
 			Parameters:
-				url (str): Target website URL.
-				filename (str): Desired Markdown file (without extension).
-				output_dir (str): Directory to save the file into.
+			----------
+			url (str): Target website URL.
+			filename (str): Desired Markdown file (without extension).
+			output_dir (str): Directory to save the file into.
 
 			Returns:
-				Optional[str]: Path to the saved file if successful, otherwise None.
+			Optional[str]: Path to the saved file if successful, otherwise None.
 
 		"""
 		return self.scraper.scrape( url, filename, output_dir )
