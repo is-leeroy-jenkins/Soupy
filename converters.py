@@ -190,16 +190,15 @@ class Html2TextConverter( MarkdownConverter ):
 			exception.method = "convert(self, html: str) -> Optional[str]"
 			error = ErrorDialog( exception )
 			error.show( )
-			return None
 
 class SoupFallbackConverter( MarkdownConverter ):
 	"""
-
-	Purpose:
-	--------
-	Simple, dependency-light fallback that preserves headings, paragraphs,
-	lists, and blockquotes from a parsed DOM. Intended as a last-resort
-	converter when richer libraries are unavailable or fail.
+	
+		Purpose:
+		--------
+		Simple, dependency-light fallback that preserves headings, paragraphs,
+		lists, and blockquotes from a parsed DOM. Intended as a last-resort
+		converter when richer libraries are unavailable or fail.
 
 	"""
 
@@ -217,18 +216,18 @@ class SoupFallbackConverter( MarkdownConverter ):
 	def strip_noise( self, soup: BeautifulSoup ) -> None:
 		"""
 
-		Purpose:
-		--------
-		Remove non-content tags from the parsed DOM (scripts, styles, iframes,
-		svgs, forms, etc.) to reduce noise prior to text extraction.
-
-		Parameters:
-		----------
-		soup (BeautifulSoup): Parsed DOM.
-
-		Returns:
-		-------
-		None
+			Purpose:
+			--------
+			Remove non-content tags from the parsed DOM (scripts, styles, iframes,
+			svgs, forms, etc.) to reduce noise prior to text extraction.
+	
+			Parameters:
+			----------
+			soup (BeautifulSoup): Parsed DOM.
+	
+			Returns:
+			-------
+			None
 
 		"""
 		try:
@@ -239,8 +238,8 @@ class SoupFallbackConverter( MarkdownConverter ):
 				tag.decompose( )
 		except Exception as e:
 			exception = Error( e )
-			exception.module = "soupy"
-			exception.cause = "SoupFallbackConverter"
+			exception.module = 'converters'
+			exception.cause = 'SoupFallbackConverter'
 			exception.method = "strip_noise(self, soup: BeautifulSoup) -> None"
 			error = ErrorDialog( exception )
 			error.show( )

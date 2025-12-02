@@ -1,39 +1,36 @@
 from typing import Optional, List
 from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
+import html2text
 
-try:
-	import html2text
-
-	_HAS_HTML2TEXT = True
-except Exception:
-	_HAS_HTML2TEXT = False
+_HAS_HTML2TEXT = True
 
 def throw_if( name: str, value: object ):
-	if not value:
+	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
 class MarkdownConverter:
 	"""
 
 		Purpose:
-		Abstract base for HTML → Markdown conversion.
-
-
+		-----------
+		Base class for HTML → Markdown conversion.
+		
 		Contract:
+		-----------
 		convert(html: str) -> str
 
 	"""
-	# class-level members for introspection
 	raw_html: Optional[ str ] = None
 	parsed_text: Optional[ str ] = None
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		Purpose:
-			Provide a stable ordering for attributes and methods for tooling.
+		
 		Returns:
-			List[str]: attribute names followed by public methods.
+		-----------
+		List[str]: attribute names followed by public methods.
+		
 		"""
 		return [ 'raw_html', 'parsed_text', 'convert' ]
 
@@ -44,53 +41,51 @@ class Html2TextConverter( MarkdownConverter ):
 	"""
 
 		Purpose:
-			Use the 'html2text' library for high-fidelity conversion when available.
-
-		Notes:
-			If html2text isn't installed, this converter raises RuntimeError.
+		-----------
+		Uses the 'html2text' library for high-fidelity conversion when available.
 
 	"""
-
-	# No instance-specific attributes beyond base class, but declare for clarity
-	_has_html2text: bool = _HAS_HTML2TEXT
+	_has_html2text: Optional[ bool ]
 
 	def __init__( self ) -> None:
 		super( ).__init__( )
-
+		self.raw_html = None
+		self.parsed_text = None
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		Purpose:
+		
+			Purpose:
+			-----------
 			Provide ordering for Html2TextConverter's attributes and methods.
-		Returns:
+			
+			Returns:
+			-----------
 			List[str]: attribute names followed by public methods.
+			
 		"""
-		return [ 'raw_html', 'parsed_text', '_has_html2text', 'convert' ]
+		return [ 'raw_html', 'parsed_text', 'convert' ]
 
 
 	def convert( self, html: str ) -> str | None:
 		"""
 
 			Purpose:
-				Convert HTML to Markdown using html2text.
+			-----------
+			Convert HTML to Markdown using html2text.
 
 			Parameters:
-				html (str):
-					HTML fragment or full document.
+			-----------
+			html (str): HTML fragment or full document.
 
 			Returns:
-				str:
-					Markdown representation.
+			-----------
+			str: Markdown representation.
 
-			Raises:
-				RuntimeError:
-					If html2text is unavailable.
 
 		"""
 		try:
-			if not _HAS_HTML2TEXT:
-				raise RuntimeError( 'html2text not installed.' )
-
+			throw_if( 'htmel', html )
 			self.raw_html = html
 			h = html2text.HTML2Text( )
 			h.body_width = 0
@@ -102,9 +97,9 @@ class Html2TextConverter( MarkdownConverter ):
 			return self.parsed_text
 		except Exception as e:
 			exception = Error( e )
-			exception.module = ''
-			exception.cause = ''
-			exception.method = ''
+			exception.module = 'parsers'
+			exception.cause = 'Html2TextConverter'
+			exception.method = 'convert( self, html: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )
 
@@ -113,26 +108,29 @@ class SoupFallbackConverter( MarkdownConverter ):
 	"""
 
 		Purpose:
-			Simple, dependency-light fallback that preserves headings, paragraphs,
-			lists, and blockquotes from a parsed DOM.
+		-----------
+		Simple, dependency-light fallback that preserves headings, paragraphs,
+		lists, and blockquotes from a parsed DOM.
 
 	"""
-	# explicit class-level members for introspection and to match project style
-	soup: Optional[ BeautifulSoup ] = None
-	blocks: Optional[ List[ str ] ] = None
-	raw_html: Optional[ str ] = None
-	parsed_text: Optional[ str ] = None
+	soup: Optional[ BeautifulSoup ]
+	blocks: Optional[ List[ str ] ]
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
 
 	def __init__( self ):
 		super( ).__init__( )
 		self.blocks = [ ]
+		self.raw_html = None
+		self.parsed_text = None
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		Purpose:
-			Provide a stable ordering for SoupFallbackConverter attributes/methods.
-		Returns:
+			
+			Returns:
+			-----------
 			List[str]: attribute names followed by public methods.
+			
 		"""
 		return [ 'soup', 'blocks', 'raw_html', 'parsed_text', 'strip_noise', 'convert' ]
 
@@ -155,15 +153,16 @@ class SoupFallbackConverter( MarkdownConverter ):
 		"""
 
 			Purpose:
-				Convert HTML to a basic Markdown string.
+			-----------
+			Convert HTML to a basic Markdown string.
 
 			Parameters:
-				html (str):
-					HTML fragment or full document.
+			-----------
+			html (str): HTML fragment or full document.
 
 			Returns:
-				str:
-					Markdown (simple).
+			-----------
+			str: Markdown (simple).
 
 		"""
 		try:
@@ -172,28 +171,24 @@ class SoupFallbackConverter( MarkdownConverter ):
 			self.soup = BeautifulSoup( self.raw_html, 'html.parser' )
 			self.strip_noise( self.soup )
 			body = self.soup.body
-
-			# guard if <body> is missing (return a sensible fallback)
 			if body is None:
 				return self.soup.get_text( '\n', strip = True )
-
-			for el in body.find_all( [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
-			                           'blockquote', 'pre', 'code' ] ):
+			tags = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
+			                           'blockquote', 'pre', 'code' ]
+			for el in body.find_all( tags ):
 				txt = el.get_text( ' ', strip = True )
 				if not txt:
 					continue
-				# use the tag name for decision logic
+					
 				name = el.name.lower( )
 				if name.startswith( 'h' ):
 					level = int( name[ 1 ] ) if name[ 1: ].isdigit( ) else 2
-					# fixed f-string for '#' * level
 					self.blocks.append( f'{"#" * level} {txt}' )
 				elif name == 'li':
 					self.blocks.append( f'- {txt}' )
 				elif name == 'blockquote':
-					self.blocks.append(
-						'\n'.join(
-							[ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ] ) )
+					quote = [ f'> {line}' for line in txt.splitlines( ) if line.strip( ) ]
+					self.blocks.append( '\n'.join( quote ) )
 				else:
 					self.blocks.append( txt )
 			if not self.blocks:
@@ -213,31 +208,37 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 	"""
 
 		Purpose:
-			Try multiple Markdown converters in order until one succeeds.
+		-----------
+		Try multiple Markdown converters in order until one succeeds.
 
 		Parameters:
-			converters (list[MarkdownConverter]):
-				Ordered list of converter strategies.
+		-----------
+		converters (list[MarkdownConverter]): Ordered list of converter strategies.
 
 	"""
-	# class-level members
-	converters: Optional[ List[ MarkdownConverter ] ] = None
-	errors: Optional[ List[ str ] ] = None
-	raw_html: Optional[ str ] = None
-	parsed_text: Optional[ str ] = None
+	converters: Optional[ List[ MarkdownConverter ] ]
+	errors: Optional[ List[ str ] ]
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
 
 	def __init__( self, converters: list[ MarkdownConverter ] ) -> None:
 		super( ).__init__( )
 		self.converters = converters[ : ]
 		self.errors = [ ]
+		self.raw_html = None
+		self.parsed_text = None
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		Purpose:
+		
+			Purpose:
+			-----------
 			Provide a stable ordering for CompositeMarkdownConverter attributes/methods.
-
-		Returns:
+	
+			Returns:
+			-----------
 			List[str]: attribute names followed by public methods.
+			
 		"""
 		return [ 'converters', 'errors', 'raw_html', 'parsed_text', 'convert' ]
 
@@ -245,20 +246,17 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 		"""
 
 			Purpose:
-				Apply each converter in order until one returns Markdown successfully.
+			-----------
+			Apply each converter in order until one returns Markdown successfully.
 
 			Parameters:
-				html (str):
-					HTML input.
+			-----------
+			html (str): HTML input.
 
 			Returns:
-				str:
-					Markdown output.
-
-			Raises:
-				RuntimeError:
-					If all converters fail.
-
+			-----------
+			str: Markdown output.
+ 
 		"""
 		try:
 			for c in self.converters:
