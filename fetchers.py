@@ -195,7 +195,7 @@ class WebFetcher( Fetcher ):
 		if 'User-Agent' not in self.headers:
 			self.headers[ 'User-Agent' ] = self.agents
 
-	def __dir__( self ) -> list[ str ]:
+	def __dir__( self ) -> List[ str ]:
 		'''
 			
 			Purpose:
@@ -241,13 +241,12 @@ class WebFetcher( Fetcher ):
 			throw_if( 'url', url )
 			self.raw_url = url
 			self.timeout = int( time )
-			resp = requests.get( url=self.raw_url, headers=self.headers, timeout=self.timeout )
-			resp.raise_for_status( )
-			self.response = resp
-			html = resp.text
-			text = self.html_to_text( html )
-			result = Result( url = resp.url, status=resp.status_code, text=text, html=html,
-				headers = resp.headers )
+			self.response = requests.get( url=self.raw_url, headers=self.headers, timeout=self.timeout )
+			self.response.raise_for_status( )
+			self.raw_html = self.response.text
+			text = self.html_to_text( self.raw_html )
+			result = Result( url=self.response.url, status=self.response.status_code, text=text,
+				html=self.raw_html, headers = self.response.headers )
 			self.result = result
 			return result
 		except Exception as exc:  
