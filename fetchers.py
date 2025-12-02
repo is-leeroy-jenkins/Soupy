@@ -188,7 +188,7 @@ class WebFetcher( Fetcher ):
 		self.raw_url = None
 		self.raw_html = None
 		self.response = None
-		self.headers = { }
+		self.headers = headers if headers is not None else { }
 		self.agents = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64;'
 		               + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36')
 
@@ -353,7 +353,10 @@ class WebCrawler( WebFetcher ):
 			list[str]: Ordered attribute/method names.
 			
 		'''
-		return [ 'use_playwright', '_browser_context', 'fetch', 'html_to_text',
+		return [ 'use_playwright',
+		         '_browser_context',
+		         'fetch',
+		         'html_to_text',
 		         'render_with_playwright' ]
 
 	def fetch( self, url: str, time: int=15 ) -> Result | None:
@@ -378,33 +381,15 @@ class WebCrawler( WebFetcher ):
 		'''
 		try:
 			throw_if( 'url', url )
-				try:
-					cfg = { 'url': url }
-					payload = crawl4ai.fetch_and_render( cfg )
-					if payload and isinstance( payload, dict ) and 'content' in payload:
-						html = payload.get( 'content', '' )
-						text = self.html_to_text( html )
-						result = Result( url = url, status=200, text=text, html=html,
-							headers = { } )
-						self.result = result
-						return result
-
-			try:
-				return super( ).fetch( url, time = time )
-			except Exception:
-				pass
-
-			if self.use_playwright:
-				try:
-					html = self.render_with_playwright( url, timeout=time )
-					text = self.html_to_text( html )
-					result = Result( url=url, status=200, text=text, html=html, headers = { } )
-					self.result = result
-					return result
-				except Exception: 
-					pass
- 
-			raise RuntimeError( f'Failed to fetch URL via crawl4ai/requests/playwright: {url}' )
+			cfg = { 'url': url }
+			payload = crawl4ai.fetch_and_render( cfg )
+			if payload and isinstance( payload, dict ) and 'content' in payload:
+				html = payload.get( 'content', '' )
+				text = self.html_to_text( html )
+				result = Result( url = url, status=200, text=text, html=html,
+					headers = { } )
+				self.result = result
+				return result
 		except Exception as exc:
 			exception = Error( exc )
 			exception.module = 'scrapers'
