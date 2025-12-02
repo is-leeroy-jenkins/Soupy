@@ -114,7 +114,13 @@ class Fetcher:
 			list[str]: Ordered attribute/method names.
 				
 		'''
-		return [ 'timeout', 'headers', 'response', 'url', 'result', 'fetch', 'html_to_text' ]
+		return [ 'timeout',
+		         'headers',
+		         'response',
+		         'url',
+		         'result',
+		         'fetch',
+		         'html_to_text' ]
 
 	def fetch( self, url: str, time: int=10, show_dialog: bool=True ) -> Result | None:
 		'''
@@ -176,24 +182,15 @@ class WebFetcher( Fetcher ):
 			None
 		'''
 		super( ).__init__( )
-
 		self.timeout = 15
 		self.re_tag = re.compile( r'<[^>]+>' )
 		self.re_ws = re.compile( r'\s+' )
 		self.raw_url = None
 		self.raw_html = None
 		self.response = None
-
-		if headers is None:
-			self.headers = { }
-		else:
-			self.headers = dict( headers )
-
-		self.agents = (
-				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-				'AppleWebKit/537.36 (KHTML, like Gecko) '
-				'Chrome/124.0 Safari/537.36'
-		)
+		self.headers = { }
+		self.agents = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64;'
+		               + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36')
 
 		if 'User-Agent' not in self.headers:
 			self.headers[ 'User-Agent' ] = self.agents
@@ -214,7 +211,13 @@ class WebFetcher( Fetcher ):
 			list[str]: Ordered attribute/method names.
 			
 		'''
-		return [ 'agents', 'raw_url', 'raw_html', 'timeout', 'headers', 'fetch', 'html_to_text' ]
+		return [ 'agents',
+		         'raw_url',
+		         'raw_html',
+		         'timeout',
+		         'headers',
+		         'fetch',
+		         'html_to_text' ]
 
 	def fetch( self, url: str, time: int=10  ) -> Result | None:
 		'''
@@ -307,11 +310,10 @@ class WebCrawler( WebFetcher ):
 		None
 		
 	'''
-	use_playwright: bool
+	use_playwright: Optional[ bool ]
 	_browser_context: Optional[ Any ]
 
-	def __init__( self, headers: Optional[ Dict[ str, str ] ]=None,
-	              use_playwright: bool=False ) -> None:
+	def __init__( self, headers: Optional[ Dict[ str, str ] ]=None ) -> None:
 		'''
 		
 			Purpose:
@@ -330,8 +332,10 @@ class WebCrawler( WebFetcher ):
 			
 		'''
 		super( ).__init__( headers = headers )
-		self.use_playwright = bool( use_playwright )
 		self._browser_context = None
+		self.raw_url = None
+		self.raw_html = None
+		self.response = None
 
 	def __dir__( self ) -> list[ str ]:
 		'''
@@ -374,7 +378,6 @@ class WebCrawler( WebFetcher ):
 		'''
 		try:
 			throw_if( 'url', url )
-			if crawl4ai is not None:
 				try:
 					cfg = { 'url': url }
 					payload = crawl4ai.fetch_and_render( cfg )
@@ -385,8 +388,6 @@ class WebCrawler( WebFetcher ):
 							headers = { } )
 						self.result = result
 						return result
-				except Exception:
-					pass
 
 			try:
 				return super( ).fetch( url, time = time )
