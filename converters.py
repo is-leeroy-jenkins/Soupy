@@ -41,59 +41,51 @@
 ******************************************************************************************
 '''
 from __future__ import annotations
-
 from typing import Optional, List
-
 from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
-
-try:
-	import html2text
-
-	_HAS_HTML2TEXT = True
-except Exception:
-	_HAS_HTML2TEXT = False
+import html2text
 
 def throw_if( name: str, value: object ) -> None:
 	"""
 
-	Purpose:
-	--------
-	Lightweight guard used across the soupy codebase to validate required
-	arguments. Treats None and empty/whitespace-only strings as invalid.
-
-	Parameters:
-	----------
-	name (str): Human-friendly name of the argument used in the raised
+		Purpose:
+		--------
+		Lightweight guard used across the soupy codebase to validate required
+		arguments. Treats None and empty/whitespace-only strings as invalid.
+	
+		Parameters:
+		----------
+		name (str): Human-friendly name of the argument used in the raised
 		ValueError message.
-	value (object): The value to validate. If None or an empty/whitespace
-		string, a ValueError is raised.
-
-	Returns:
-	-------
-	None
+		
+		value (object): The value to validate.
+		
+		Returns:
+		-------
+		None
 
 	"""
 	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be None!' )
-	if isinstance( value, str ) and not value.strip( ):
-		raise ValueError( f'Argument "{name}" cannot be empty or whitespace!' )
 
-class MarkdownConverter:
+class Converter( ):
 	"""
 
-	Purpose:
-	--------
-	Abstract base for HTML -> Markdown conversion strategies. Subclasses must
-	implement ``convert(html: str) -> Optional[str]``.
-
-	Contract:
-	---------
-	convert(html: str) -> Optional[str]
+		Purpose:
+		--------
+		Base for HTML -> Markdown conversion strategies. Subclasses must
+		implement ``convert(html: str) -> Optional[str]``.
+	
+		Contract:
+		---------
+		convert(html: str) -> Optional[str]
 
 	"""
-	raw_html: Optional[ str ] = None
-	parsed_text: Optional[ str ] = None
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
+	tags: Optional[ List[ str ] ]
+	body: Optional[ str ]
 
 	def convert( self, html: str ) -> str | None:
 		"""
@@ -111,22 +103,26 @@ class MarkdownConverter:
 			Optional[str]: Markdown string when conversion succeeds, otherwise None.
 
 		"""
-		raise NotImplementedError( "Subclasses must implement convert()" )
+		raise NotImplementedError( 'Subclasses must implement convert()' )
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		Purpose:
-		--------
-		Provide a compact, stable list of attributes for GUI inspection and
-		tooling.
-
-		Returns:
-		-------
-		List[str]
+		
+			Purpose:
+			--------
+			Provide a compact, stable list of attributes for GUI inspection and
+			tooling.
+	
+			Returns:
+			-------
+			List[str]
+		
 		"""
-		return [ "raw_html", "parsed_text", "convert" ]
+		return [ 'raw_html',
+		         'parsed_text',
+		         'convert' ]
 
-class Html2TextConverter( MarkdownConverter ):
+class HtmlConverter( Converter ):
 	"""
 
 		Purpose:
@@ -142,13 +138,15 @@ class Html2TextConverter( MarkdownConverter ):
 		super( ).__init__( )
 		self.raw_html = None
 		self.parsed_text = None
+		self.tags = None
+		self.body = None
 	
 	def __dir__( self ) -> List[ str ]:
 		return [ 'raw_html',
 		         'parsed_text',
 		         'convert' ]
 
-	def convert( self, html: str ) -> Optional[ str ]:
+	def convert( self, html: str ) -> str | None:
 		"""
 	
 			Purpose:
@@ -166,7 +164,7 @@ class Html2TextConverter( MarkdownConverter ):
 			
 		"""
 		try:
-			throw_if( "html", html )
+			throw_if( 'html', html )
 			self.raw_html = html
 			h = html2text.HTML2Text( )
 			h.bodywidth = 0
@@ -177,14 +175,14 @@ class Html2TextConverter( MarkdownConverter ):
 			self.parsed_text = md.strip( ) if md is not None else None
 			return self.parsed_text
 		except Exception as e:
-			exception = Error( e )
-			exception.module = "soupy"
-			exception.cause = "Html2TextConverter"
-			exception.method = "convert(self, html: str) -> Optional[str]"
-			error = ErrorDialog( exception )
-			error.show( )
+			exc = Error( e )
+			exc.module = 'soupy'
+			exc.cause = 'HtmlConverter'
+			exc.method = 'convert(self, html: str) -> str | None'
+			err = ErrorDialog( exc )
+			err.show( )
 
-class SoupFallbackConverter( MarkdownConverter ):
+class FallbackConverter( Converter ):
 	"""
 	
 		Purpose:
@@ -199,13 +197,21 @@ class SoupFallbackConverter( MarkdownConverter ):
 
 	def __init__( self ) -> None:
 		super( ).__init__( )
-		self.blocks = [ ]
+		self.raw_html = None
+		self.parsed_text = None
+		self.blocks = None
+		self.tags = None
 		self.soup = None
-
+	
 	def __dir__( self ) -> List[ str ]:
-		return [ 'soup', 'blocks', 'strip_noise', 'convert' ]
+		return [ 'raw_html',
+		         'parsed_text',
+				 'soup',
+		         'blocks',
+		         'strip_noise',
+		         'convert' ]
 
-	def strip_noise( self, soup: BeautifulSoup ) -> None:
+	def strip_noise( self ) -> None:
 		"""
 
 			Purpose:
@@ -223,20 +229,24 @@ class SoupFallbackConverter( MarkdownConverter ):
 
 		"""
 		try:
-			throw_if( 'soup', soup )
-			self.soup = soup
-			for tag in self.soup(
-					[ 'script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form' ] ):
+			self.tags = [ 'script',
+			         'style',
+			         'noscript',
+			         'svg',
+			         'canvas',
+			         'iframe',
+			         'form' ]
+			for tag in self.tags:
 				tag.decompose( )
 		except Exception as e:
-			exception = Error( e )
-			exception.module = 'converters'
-			exception.cause = 'SoupFallbackConverter'
-			exception.method = "strip_noise(self, soup: BeautifulSoup) -> None"
-			error = ErrorDialog( exception )
-			error.show( )
+			exc = Error( e )
+			exc.module = 'converters'
+			exc.cause = 'FallbackConverter'
+			exc.method = 'strip_noise(self, soup: BeautifulSoup) -> None'
+			err = ErrorDialog( exc )
+			err.show( )
 
-	def convert( self, html: str ) -> Optional[ str ]:
+	def convert( self, html: str ) -> str | None:
 		"""
 
 			Purpose:
@@ -254,13 +264,13 @@ class SoupFallbackConverter( MarkdownConverter ):
 
 		"""
 		try:
-			throw_if( "html", html )
+			throw_if( 'html', html )
 			self.raw_html = html
-			self.soup = BeautifulSoup( self.raw_html, "html.parser" )
+			self.soup = BeautifulSoup( self.raw_html, 'html.parser' )
 			self.blocks = [ ]
 			self.strip_noise( self.soup )
-			body = self.soup.body or self.soup
-			tags = [ 'h1',
+			self.body = self.soup.body or self.soup
+			self.tags = [ 'h1',
 			         'h2',
 			         'h3',
 			         'h4',
@@ -271,7 +281,7 @@ class SoupFallbackConverter( MarkdownConverter ):
 			         'blockquote',
 			         'pre',
 			         'code' ]
-			for el in body.find_all( tags ):
+			for el in self.body.find_all( self.tags ):
 				txt = el.get_text( ' ', strip = True )
 				if not txt:
 					continue
@@ -279,11 +289,9 @@ class SoupFallbackConverter( MarkdownConverter ):
 				if tag_name.startswith( 'h' ):
 					level = 2
 					if len( tag_name ) > 1 and tag_name[ 1: ].isdigit( ):
-						try:
-							level = int( tag_name[ 1: ] )
-						except Exception:
-							level = 2
-					self.blocks.append( f'{"#" * level} {txt}' )
+						level = int( tag_name[ 1: ] )
+						
+					self.blocks.append( f'{'#' * level} {txt}' )
 				elif tag_name == 'li':
 					self.blocks.append( f'- {txt}' )
 				elif tag_name == 'blockquote':
@@ -293,7 +301,7 @@ class SoupFallbackConverter( MarkdownConverter ):
 					self.blocks.append( txt )
 
 			if not self.blocks:
-				fallback = body.get_text( '\n', strip=True )
+				fallback = self.body.get_text( '\n', strip=True )
 				self.parsed_text = fallback
 				return self.parsed_text
 
@@ -308,7 +316,7 @@ class SoupFallbackConverter( MarkdownConverter ):
 			error.show( )
 			return None
 
-class CompositeMarkdownConverter( MarkdownConverter ):
+class CompositeConverter( Converter ):
 	"""
 
 		Purpose:
@@ -321,15 +329,18 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 		converters (list[MarkdownConverter]): Ordered list of converter strategies.
 
 	"""
-	converters: Optional[ List[ MarkdownConverter ] ]
+	converters: Optional[ List[ Converter ] ]
 	errors: Optional[ List[ str ] ]
 
-	def __init__( self, converters: List[ MarkdownConverter ] ) -> None:
+	def __init__( self, converters: List[ Converter ] ) -> None:
 		super( ).__init__( )
 		self.converters = converters[ : ] if converters is not None else [ ]
 		self.errors = [ ]
 		self.raw_html = None
 		self.parsed_text = None
+		self.blocks = None
+		self.tags = None
+		self.soup = None
 
 	def __dir__( self ) -> List[ str ]:
 		return [ 'converters',

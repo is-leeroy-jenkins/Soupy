@@ -3,13 +3,12 @@ from boogr import Error, ErrorDialog
 from bs4 import BeautifulSoup
 import html2text
 
-_HAS_HTML2TEXT = True
 
 def throw_if( name: str, value: object ):
 	if value is None:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
-class MarkdownConverter:
+class MarkdownConverter( ):
 	"""
 
 		Purpose:
@@ -21,16 +20,17 @@ class MarkdownConverter:
 		convert(html: str) -> str
 
 	"""
-	raw_html: Optional[ str ] = None
-	parsed_text: Optional[ str ] = None
+	raw_html: Optional[ str ]
+	parsed_text: Optional[ str ]
+	body: Optional[ str ]
 
 	def __dir__( self ) -> List[ str ]:
 		"""
-		
-		Returns:
-		-----------
-		List[str]: attribute names followed by public methods.
-		
+			
+			Returns:
+			-----------
+			List[str]: attribute names followed by public methods.
+			
 		"""
 		return [ 'raw_html', 'parsed_text', 'convert' ]
 
@@ -64,7 +64,9 @@ class Html2TextConverter( MarkdownConverter ):
 			List[str]: attribute names followed by public methods.
 			
 		"""
-		return [ 'raw_html', 'parsed_text', 'convert' ]
+		return [ 'raw_html',
+		         'parsed_text',
+		         'convert' ]
 
 
 	def convert( self, html: str ) -> str | None:
@@ -173,8 +175,7 @@ class SoupFallbackConverter( MarkdownConverter ):
 			body = self.soup.body
 			if body is None:
 				return self.soup.get_text( '\n', strip = True )
-			tags = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li',
-			                           'blockquote', 'pre', 'code' ]
+			tags = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'blockquote', 'pre', 'code' ]
 			for el in body.find_all( tags ):
 				txt = el.get_text( ' ', strip = True )
 				if not txt:
@@ -240,7 +241,11 @@ class CompositeMarkdownConverter( MarkdownConverter ):
 			List[str]: attribute names followed by public methods.
 			
 		"""
-		return [ 'converters', 'errors', 'raw_html', 'parsed_text', 'convert' ]
+		return [ 'converters',
+		         'errors',
+		         'raw_html',
+		         'parsed_text',
+		         'convert' ]
 
 	def convert( self, html: str ) -> str | None:
 		"""
@@ -259,6 +264,7 @@ class CompositeMarkdownConverter( MarkdownConverter ):
  
 		"""
 		try:
+			throw_if( 'html', html )
 			for c in self.converters:
 				try:
 					return c.convert( html )

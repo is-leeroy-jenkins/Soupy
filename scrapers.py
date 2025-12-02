@@ -43,9 +43,9 @@
 '''
 from pathlib import Path
 from typing import Optional
-from .fetchers import Fetcher
-from .parsers import Parser
-from .writers import Writer
+from fetchers import Fetcher
+from parsers import Parser
+from writers import Writer
 from boogr import Error, ErrorDialog
 
 def throw_if( name: str, value: object ):
@@ -101,22 +101,21 @@ class Scraper( ):
 
 		"""
 		try:
-			try:
-				throw_if( 'url', url )
-				throw_if( 'file', file )
-				self.raw_html = self.fetcher.fetch( url )
-				if not self.raw_html:
-					return None
-				
-				self.parsed_text = self.parser.parse( self.raw_html )
-				if not self.parsed_text:
-					return None
-				self.file_path = self.writer.write( self.parsed_text, file, dir )
-				return self.file_path
-			except Exception as e:
-				exception = Error( e )
-				exception.module = 'scrapers'
-				exception.cause = 'Scraper'
-				exception.method = 'scrape( self, url: str, file: str, dir: str=output ) -> str'
-				error = ErrorDialog( exception )
-				error.show( )
+			throw_if( 'url', url )
+			throw_if( 'file', file )
+			self.raw_html = self.fetcher.fetch( url )
+			if not self.raw_html:
+				return None
+			
+			self.parsed_text = self.parser.parse( self.raw_html )
+			if not self.parsed_text:
+				return None
+			self.file_path = self.writer.write( self.parsed_text, file, dir )
+			return self.file_path
+		except Exception as e:
+			exc = Error( e )
+			exc.module = 'scrapers'
+			exc.cause = 'Scraper'
+			exc.method = 'scrape( self, url: str, file: str, dir: str=output ) -> str'
+			err = ErrorDialog( exc )
+			err.show( )

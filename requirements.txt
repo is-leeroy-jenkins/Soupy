@@ -8,3 +8,5 @@ playwright~=1.54.0
 FreeSimpleGUI
 html2text
 oauthlib
+nest_asyncio
+asyncio

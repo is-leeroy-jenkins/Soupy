@@ -41,18 +41,6 @@
   </summary>
   ******************************************************************************************
 '''
-'''
-  ******************************************************************************************
-      Assembly:                Soupy
-      Filename:                extractors.py
-      Author:                  Terry D. Eppler
-      Created:                 05-31-2022
-
-      Last Modified By:        ChatGPT (fix)
-      Last Modified On:        2025-08-25
-  ******************************************************************************************
-'''
-
 from typing import Optional, List
 from bs4 import BeautifulSoup
 from boogr import Error, ErrorDialog
@@ -61,7 +49,7 @@ def throw_if( name: str, value: object ):
 	if not value:
 		raise ValueError( f'Argument "{name}" cannot be empty!' )
 
-class ContentExtractor:
+class Extractor( ):
 	"""
 
 		Purpose:
@@ -69,9 +57,11 @@ class ContentExtractor:
 
 	"""
 	raw_html: Optional[ str ]
-
+	extracted_text: Optional[ str ]
+	
 	def __init__( self ):
-		pass
+		self.raw_html = None
+		self.extracted_text = None
 
 	def __dir__( self ) -> List[ str ]:
 		"""Provide a stable ordering for tooling and REPL use."""
@@ -80,14 +70,13 @@ class ContentExtractor:
 	def extract( self, html: str ) -> str:
 		raise NotImplementedError( "NOT IMPLEMENTED!" )
 
-class HeuristicExtractor( ContentExtractor ):
+class ParagraphExtractor( Extractor ):
 	"""
 
 		Strategy:
-		Pulls all <p> tags and joins their text. Fast and often good-enough.
+		Pulls all <p> tags and joins their text.
 
 	"""
-
 	def __init__( self ):
 		super( ).__init__( )
 
@@ -97,10 +86,9 @@ class HeuristicExtractor( ContentExtractor ):
 	def extract( self, html: str ) -> str | None:
 		try:
 			throw_if( 'html', html )
-			soup = BeautifulSoup( html, "html.parser" )
-			paragraphs = [ p.get_text( separator = ' ', strip = True ) for p in
-			               soup.find_all( 'p' ) ]
-			return "".join( x for x in paragraphs if x )
+			soup = BeautifulSoup( html, 'html.parser' )
+			paragraphs = [ p.get_text( separator=' ', strip=True ) for p in  soup.find_all( 'p' ) ]
+			return ''.join( x for x in paragraphs if x )
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'soupy'
@@ -109,8 +97,7 @@ class HeuristicExtractor( ContentExtractor ):
 			error = ErrorDialog( exception )
 			error.show( )
 
-# noinspection PyArgumentList
-class ReadabilityExtractor( ContentExtractor ):
+class ArticleExtractor( Extractor ):
 	"""
 
 		Strategy:
@@ -126,48 +113,23 @@ class ReadabilityExtractor( ContentExtractor ):
 
 	def extract( self, html: str ) -> str | None:
 		"""
-		Provide boogr-style error handling consistent with other extractors.
+		
+			Extracts text from the input html
+			
 		"""
 		try:
 			throw_if( 'html', html )
-			soup = BeautifulSoup( html, "html.parser" )
-			article = soup.find( "article" )
-			return article.get_text( separator = ' ', strip = True ) if article else soup.get_text(
-				' ', strip = True )
+			soup = BeautifulSoup( html, 'html.parser' )
+			article = soup.find( 'article' )
+			if article is not None:
+				self.extracted_text = article.get_text( separator=' ', strip=True )
+			else:
+				self.extracted_text = soup.get_text( ' ', strip=True )
+			return self.extracted_text
 		except Exception as e:
 			exception = Error( e )
 			exception.module = 'soupy'
 			exception.cause = 'ReadabilityExtractor'
-			exception.method = 'extract( self, html: str ) -> str'
-			error = ErrorDialog( exception )
-			error.show( )
-
-class CompositeExtractor( ContentExtractor ):
-	"""
-
-		Orchestrates multiple extractors in sequence and returns the first non-empty result.
-
-	"""
-
-	def __init__( self, extractors ):
-		super( ).__init__( )
-		self.extractors = list( extractors or [ ] )
-
-	def __dir__( self ) -> List[ str ]:
-		return [ 'extractors', 'extract' ]
-
-	def extract( self, html: str ) -> str | None:
-		try:
-			throw_if( 'html', html )
-			for extractor in self.extractors:
-				text = extractor.extract( html )
-				if text and text.strip( ):
-					return text
-			return ""
-		except Exception as e:
-			exception = Error( e )
-			exception.module = 'soupy'
-			exception.cause = 'CompositeExtractor'
 			exception.method = 'extract( self, html: str ) -> str'
 			error = ErrorDialog( exception )
 			error.show( )

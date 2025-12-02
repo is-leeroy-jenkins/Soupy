@@ -46,9 +46,10 @@ from typing import Any, Dict, Optional, Pattern
 import re
 import requests
 from requests import Response
-from .core import Result
+from core import Result
 from boogr import Error, ErrorDialog
 import crawl4ai
+import config as cfg
 
 def throw_if( name: str, value: Any ) -> None:
 	'''
@@ -83,6 +84,7 @@ class Fetcher:
 	response: Optional[ Response ]
 	url: Optional[ str ]
 	result: Optional[ Result ]
+	text: Optional[ str ]
 
 	def __init__( self ) -> None:
 		'''
@@ -161,13 +163,13 @@ class WebFetcher( Fetcher ):
 		
 	'''
 	agents: Optional[ str ]
-	raw_url: Optional[ str ]
-	raw_html: Optional[ str ]
+	url: Optional[ str ]
+	html: Optional[ str ]
 	re_tag: Optional[ Pattern ]
 	re_ws: Optional[ Pattern ]
 	response: Optional[ Response ]
 
-	def __init__( self, headers: Optional[ Dict[ str, str ] ]=None ) -> None:
+	def __init__( self ) -> None:
 		'''
 			Purpose:
 			-----------
@@ -185,12 +187,11 @@ class WebFetcher( Fetcher ):
 		self.timeout = 15
 		self.re_tag = re.compile( r'<[^>]+>' )
 		self.re_ws = re.compile( r'\s+' )
-		self.raw_url = None
-		self.raw_html = None
+		self.url = None
+		self.html = None
 		self.response = None
-		self.headers = headers if headers is not None else { }
-		self.agents = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64;'
-		               + 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36')
+		self.headers = { }
+		self.agents = cfg.AGENTS
 
 		if 'User-Agent' not in self.headers:
 			self.headers[ 'User-Agent' ] = self.agents
@@ -212,8 +213,8 @@ class WebFetcher( Fetcher ):
 			
 		'''
 		return [ 'agents',
-		         'raw_url',
-		         'raw_html',
+		         'url',
+		         'html',
 		         'timeout',
 		         'headers',
 		         'fetch',
@@ -239,16 +240,12 @@ class WebFetcher( Fetcher ):
 		'''
 		try:
 			throw_if( 'url', url )
-			self.raw_url = url
+			self.url = url
 			self.timeout = int( time )
-			self.response = requests.get( url=self.raw_url, headers=self.headers, timeout=self.timeout )
+			self.response = requests.get( url=self.url, headers=self.headers, timeout=self.timeout )
 			self.response.raise_for_status( )
-			self.raw_html = self.response.text
-			text = self.html_to_text( self.raw_html )
-			result = Result( url=self.response.url, status=self.response.status_code, text=text,
-				html=self.raw_html, headers = self.response.headers )
-			self.result = result
-			return result
+			self.result = Result( url=self.response.url  )
+			return self.result
 		except Exception as exc:  
 			exception = Error( exc )
 			exception.module = 'scrapers'
@@ -257,7 +254,7 @@ class WebFetcher( Fetcher ):
 			dialog = ErrorDialog( exception )
 			dialog.show( )
 
-	def html_to_text( self, html: str ) -> str:
+	def html2text( self, html: str ) -> str:
 		'''
 			
 			Purpose:
@@ -287,7 +284,7 @@ class WebFetcher( Fetcher ):
 			exception = Error( exc )
 			exception.module = 'fetchers'
 			exception.cause = 'scrapers'
-			exception.method = 'html_to_text( )'
+			exception.method = 'html2text( )'
 			dialog = ErrorDialog( exception )
 			dialog.show( )
 
@@ -310,7 +307,7 @@ class WebCrawler( WebFetcher ):
 		
 	'''
 	use_playwright: Optional[ bool ]
-	_browser_context: Optional[ Any ]
+	browser_context: Optional[ Any ]
 
 	def __init__( self, headers: Optional[ Dict[ str, str ] ]=None ) -> None:
 		'''
@@ -330,11 +327,12 @@ class WebCrawler( WebFetcher ):
 			None
 			
 		'''
-		super( ).__init__( headers = headers )
-		self._browser_context = None
+		super( ).__init__( )
+		self.browser_context = None
 		self.raw_url = None
 		self.raw_html = None
 		self.response = None
+		self.headers = headers if headers is not None else {}
 
 	def __dir__( self ) -> list[ str ]:
 		'''
@@ -353,7 +351,7 @@ class WebCrawler( WebFetcher ):
 			
 		'''
 		return [ 'use_playwright',
-		         '_browser_context',
+		         'browser_context',
 		         'fetch',
 		         'html_to_text',
 		         'render_with_playwright' ]
@@ -380,15 +378,14 @@ class WebCrawler( WebFetcher ):
 		'''
 		try:
 			throw_if( 'url', url )
-			cfg = { 'url': url }
-			payload = crawl4ai.fetch_and_render( cfg )
+			configuration = { 'url': url }
+			payload = crawl4ai.fetch_and_render( configuration )
 			if payload and isinstance( payload, dict ) and 'content' in payload:
-				html = payload.get( 'content', '' )
-				text = self.html_to_text( html )
-				result = Result( url = url, status=200, text=text, html=html,
-					headers = { } )
-				self.result = result
-				return result
+				self.raw_html = payload.get( 'content', '' )
+				text = self.html2text( self.raw_html )
+				self.result = Result( url = url, status=200, text=text,
+					html=self.raw_html, headers=self.headers )
+				return self.result
 		except Exception as exc:
 			exception = Error( exc )
 			exception.module = 'scrapers'

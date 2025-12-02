@@ -64,78 +64,95 @@ class Writer( ):
 	output_path: Optional[ Path ]
 	file_path: Optional[ Path ]
 	result: Optional[ Result ]
+	body: Optional[ str ]
 
-	def write( self, text: str, filename: str, output_dir: str='output' ) -> Path | None:
+	def __init__( self ):
+		self.output_path = None
+		self.file_path = None
+		self.result = None
+		self.body = None
+		
+	def write( self, text: str, filename: str, directory: str='output' ) -> Path | None:
 		"""
 
 			Purpose:
-				Save text into a Markdown file.
+			---------
+			Save text into a Markdown file.
 
 			Parameters:
-				text (str): Text content to save.
-				filename (str): Desired Markdown file (without extension).
-				output_dir (str): Directory to save the file into.
+			---------
+			text (str): Text content to save.
+			filename (str): Desired Markdown file (without extension).
+			output_dir (str): Directory to save the file into.
 
 			Returns:
-				Optional[Path]: Path to the saved file if successful, otherwise None.
+			---------
+			Optional[Path]: Path to the saved file if successful, otherwise None.
 
 		"""
 		try:
 			throw_if( 'text', text )
 			throw_if( 'file', filename )
-			output_path = Path( output_dir )
-			output_path.mkdir( parents=True, exist_ok=True )
-			file_path = output_path / f'{filename}.md'
-			file_path.write_text( text, encoding = 'utf-8' )
-			return file_path
+			self.output_path = Path( directory )
+			self.output_path.mkdir( parents=True, exist_ok=True )
+			self.file_path = self.output_path / f'{filename}.md'
+			self.file_path.write_text( text, encoding='utf-8' )
+			return self.file_path
 		except Exception as e:
-			exception = Error( e )
-			exception.module = ''
-			exception.cause = ''
-			exception.method = ''
-			error = ErrorDialog( exception )
+			exc = Error( e )
+			exc.module = 'writers'
+			exc.cause = 'Writer'
+			exc.method = 'write( self, text: str, filename: str, directory: str="output" ) -> Path '
+			error = ErrorDialog( exc )
 			error.show( )
 
 
-class MarkdownWriter( ):
+class MarkdownWriter( Writer ):
 	"""
 
 		Purpose:
-			Serialize a `Result` into a Markdown file with a small YAML header.
+		Serialize a `Result` into a Markdown file with a small YAML header.
 
 
 	"""
-
+	def __init__( self ):
+		super( ).__init__( )
+		self.output_path = None
+		self.file_path = None
+		self.result = None
+		self.body = None
 
 	def write( self, result: Result, path: str  ) -> Path | None:
 		"""
 
 			Purpose:
-				Write a `Result` to a Markdown file (front matter + body).
+			--------
+			Write a `Result` to a Markdown file (front matter + body).
 
 			Parameters:
-				result (Result): Result object containing url/status/text/html.
-				path (str | Path): Destination path to write.
+			-----------
+			result (Result): Result object containing url/status/text/html.
+			path (str | Path): Destination path to write.
 
 			Returns:
-				Path: The absolute path of the written file.
+			--------
+			Path: The absolute path of the written file.
 
 		"""
 		try:
 			throw_if( 'result', result )
 			throw_if( 'path', path )
-			p = Path( path ).resolve( )
-			p.parent.mkdir( parents = True, exist_ok = True )
-
-			front_matter = (
-					'---\n'
-					f'source_url: {result.url}\n'
-					f'status_code: {result.status_code}\n'
-					'---\n\n'
-			)
-			body = result.text if result.text.endswith( '\n' ) else result.text + '\n'
-			p.write_text( front_matter + body, encoding='utf-8' )
-			return p
+			self.file_path = Path( path ).resolve( )
+			self.result = result
+			self.file_path.parent.mkdir( parents=True, exist_ok=True )
+			front_matter =  ('---\n'
+			                 + f'source_url: {self.result.url}\n'
+			                 + f'status_code: {self.result.status_code}\n'
+			                 + '---\n\n')
+			
+			body = self.result.text if self.result.text.endswith( '\n' ) else self.result.text + '\n'
+			self.file_path.write_text( front_matter + body, encoding='utf-8' )
+			return self.file_path
 		except Exception as e:
 			exception = Error( e )
 			exception.module = ''
